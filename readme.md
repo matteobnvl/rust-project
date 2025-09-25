@@ -5,3 +5,9 @@
 ```shell
 cargo build
 ```
+
+## Lancer le projet
+
+```shell
+cargo run
+```
