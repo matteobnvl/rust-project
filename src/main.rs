@@ -1,20 +1,28 @@
 use std::fmt::Display;
 
-use crossterm::event::{self, Event};
+use crossterm::event::{self, Event, KeyCode};
 use rand::{SeedableRng, rngs::StdRng};
+use ratatui::layout::Size;
 use ratatui::DefaultTerminal;
+use ratatui::widgets::{Paragraph, Block, Borders};
 use std::time::{Duration, Instant};
 
 mod utils;
+mod map;
 
-struct GameState {}
+pub struct GameState {
+    map: Vec<Vec<map::Tile>>,
+    width: u16,
+    height: u16,
+}
 
 impl GameState {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(map: Vec<Vec<map::Tile>>, width: u16, height: u16) -> Self {
+        Self { map, width, height }
     }
+    
     pub fn update(&mut self) {
-        todo!()
+        // Logique de mise à jour du jeu
     }
 }
 
@@ -33,45 +41,72 @@ pub type Result<T> = std::result::Result<T, SimulationError>;
 
 fn main() -> Result<()> {
     let _guard = utils::configure_logger();
-    const REAPTED_SEED: [u8; 32] = [0; 32];
-    let mut rng = StdRng::from_seed(REAPTED_SEED);
+    tracing::info!("Application started!");
+    const REPEATED_SEED: [u8; 32] = [0; 32];
+    let mut _rng = StdRng::from_seed(REPEATED_SEED);
+
     let terminal = ratatui::init();
-    let mut game_state = GameState::new();
-    run(terminal, &mut game_state)?;
+    let area: Size = terminal.size().map_err(SimulationError::Io)?;
+    let map = map::generate_map(area.width, area.height)?;
+    tracing::info!("Map generated");
+    let mut game_state = GameState::new(map, area.width, area.height);
+
+    tracing::info!("Game state initialized");
+
+    let res = run(terminal, &mut game_state, area);
+    tracing::info!("Game loop exited");
     ratatui::restore();
-    Ok(())
+    res
 }
 
-fn run(mut terminal: DefaultTerminal, game_state: &mut GameState) -> Result<()> {
-    const TICK_RATE: Duration = Duration::from_millis(50); // 20 updates per second
+fn run(mut terminal: DefaultTerminal, game_state: &mut GameState, area: Size) -> Result<()> {
+    const TICK_RATE: Duration = Duration::from_millis(50);
 
     let mut last_tick = Instant::now();
-
-    // Configure crossterm to not block on event reading
     event::poll(Duration::from_millis(0)).map_err(SimulationError::Io)?;
-
+    tracing::info!("Crossterm configured");
     loop {
-        let timeout = TICK_RATE
-            .checked_sub(last_tick.elapsed())
-            .unwrap_or_else(|| Duration::from_secs(0));
-
-        if event::poll(timeout).map_err(SimulationError::Io)? {
-            if let Event::Key(_) = event::read().map_err(SimulationError::Io)? {
-                break Ok(());
-            }
-        }
-
         if last_tick.elapsed() >= TICK_RATE {
             game_state.update();
             last_tick = Instant::now();
         }
 
+        let timeout = TICK_RATE
+            .checked_sub(last_tick.elapsed())
+            .unwrap_or(Duration::from_millis(0));
+        if event::poll(timeout).map_err(SimulationError::Io)? {
+            if let Event::Key(key_event) = event::read().map_err(SimulationError::Io)? {
+                if key_event.code == KeyCode::Char(' ') {
+                    tracing::info!("Space key pressed, exiting game loop");
+                    return Ok(());
+                }
+            }
+        }
+
         terminal
-            .draw(|f| render(f, game_state))
+            .draw(|f| render_map_simple(f, game_state, area))
             .map_err(SimulationError::Io)?;
     }
 }
 
-fn render(f: &mut ratatui::Frame<'_>, game_state: &GameState) {
-    todo!()
+fn render_map_simple(f: &mut ratatui::Frame<'_>, game_state: &GameState, area: Size) {
+    let map_content = game_state.map.iter()
+        .take(game_state.height as usize)
+        .map(|row| {
+            row.iter()
+                .take(game_state.width as usize)
+                .map(|tile| match tile {
+                    map::Tile::Wall => 'x',
+                    map::Tile::Floor => ' ',
+                })
+                .collect::<String>()
+        })
+        .collect::<Vec<String>>()
+        .join("\n");
+
+    let paragraph = Paragraph::new(map_content)
+        .block(Block::default().borders(Borders::ALL).title("Map"));
+    
+    let rect = ratatui::layout::Rect::new(0, 0, area.width, area.height);
+    f.render_widget(paragraph, rect);
 }
