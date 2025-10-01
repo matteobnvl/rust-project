@@ -1,10 +1,16 @@
 use std::fmt::Display;
 
-use crossterm::event::{self, Event, KeyCode};
 use rand::{SeedableRng, rngs::StdRng};
-use ratatui::layout::Size;
-use ratatui::DefaultTerminal;
-use ratatui::widgets::{Paragraph, Block, Borders};
+use ratatui::{
+    prelude::*,
+    crossterm::event::{self, Event, KeyCode},
+    layout::Size,
+    style::{Color, Style},
+    widgets::{Paragraph},
+    DefaultTerminal, 
+    Frame,
+    text::{Span, Line},
+};
 use std::time::{Duration, Instant};
 
 mod utils;
@@ -47,8 +53,16 @@ fn main() -> Result<()> {
 
     let terminal = ratatui::init();
     let area: Size = terminal.size().map_err(SimulationError::Io)?;
-    let sources = map::generate_sources_noise(area.width, area.height)?;
-    let mut map = map::generate_map(area.width, area.height)?; 
+    let sources = map::generate_sources_rand(area.width, area.height)?;
+    let mut map = map::generate_map(area.width, area.height)?;
+    let start_x = (area.width / 2) - 3;
+    let start_y = (area.height / 2) - 3;
+
+    for y in start_y..start_y + 3 {
+        for x in start_x..start_x + 3 {
+            map[y as usize][x as usize] = map::Tile::Base;
+        }
+    }
 
     sources.iter().for_each(|(x, y, resource)| {
         if let map::Tile::Floor = map[*y as usize][*x as usize] {
@@ -97,26 +111,27 @@ fn run(mut terminal: DefaultTerminal, game_state: &mut GameState, area: Size) ->
     }
 }
 
-fn render_map_simple(f: &mut ratatui::Frame<'_>, game_state: &GameState, area: Size) {
-    let map_content = game_state.map.iter()
+fn render_map_simple(f: &mut Frame<'_>, game_state: &GameState, area: Size) {
+    let map_lines: Vec<Line> = game_state.map.iter()
         .take(game_state.height as usize)
         .map(|row| {
-            row.iter()
+            let spans: Vec<Span> = row.iter()
                 .take(game_state.width as usize)
-                .map(|tile| match tile {
-                    map::Tile::Wall => 'o',
-                    map::Tile::Floor => ' ',
-                    map::Tile::Source => 'E',
-                    map::Tile::Cristal => 'C',
+                .map(|tile| {
+                    let (ch, color) = match tile {
+                        map::Tile::Wall => ('0', Color::LightCyan),
+                        map::Tile::Floor => (' ', Color::Reset),
+                        map::Tile::Source => ('E', Color::Green),
+                        map::Tile::Cristal => ('C', Color::LightMagenta),
+                        map::Tile::Base => ('#', Color::LightGreen),
+                    };
+                    Span::styled(ch.to_string(), Style::default().fg(color))
                 })
-                .collect::<String>()
+                .collect();
+            Line::from(spans)
         })
-        .collect::<Vec<String>>()
-        .join("\n");
+        .collect();
 
-    let paragraph = Paragraph::new(map_content)
-        .block(Block::default().borders(Borders::ALL).title("Map"));
-    
-    let rect = ratatui::layout::Rect::new(0, 0, area.width, area.height);
-    f.render_widget(paragraph, rect);
+    let map_widget = Paragraph::new(map_lines);
+    f.render_widget(map_widget, Rect::new(0, 0, area.width, area.height));
 }
