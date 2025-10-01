@@ -47,7 +47,15 @@ fn main() -> Result<()> {
 
     let terminal = ratatui::init();
     let area: Size = terminal.size().map_err(SimulationError::Io)?;
-    let map = map::generate_map(area.width, area.height)?;
+    let sources = map::generate_sources_noise(area.width, area.height)?;
+    let mut map = map::generate_map(area.width, area.height)?; 
+
+    sources.iter().for_each(|(x, y, resource)| {
+        if let map::Tile::Floor = map[*y as usize][*x as usize] {
+            map[*y as usize][*x as usize] = resource.clone();
+        }
+    });
+
     tracing::info!("Map generated");
     let mut game_state = GameState::new(map, area.width, area.height);
 
@@ -96,8 +104,10 @@ fn render_map_simple(f: &mut ratatui::Frame<'_>, game_state: &GameState, area: S
             row.iter()
                 .take(game_state.width as usize)
                 .map(|tile| match tile {
-                    map::Tile::Wall => 'x',
+                    map::Tile::Wall => 'o',
                     map::Tile::Floor => ' ',
+                    map::Tile::Source => 'E',
+                    map::Tile::Cristal => 'C',
                 })
                 .collect::<String>()
         })

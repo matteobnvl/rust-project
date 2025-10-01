@@ -1,0 +1,142 @@
+[2m2025-10-01T11:00:03.193927Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Application started!
+[2m2025-10-01T11:00:03.203570Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Map generated
+[2m2025-10-01T11:00:03.203601Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game state initialized
+[2m2025-10-01T11:00:03.203965Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Crossterm configured
+[2m2025-10-01T11:04:33.221580Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Application started!
+[2m2025-10-01T11:04:33.231213Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Map generated
+[2m2025-10-01T11:04:33.231263Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game state initialized
+[2m2025-10-01T11:04:33.231536Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Crossterm configured
+[2m2025-10-01T11:05:13.870161Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Application started!
+[2m2025-10-01T11:05:13.879960Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Map generated
+[2m2025-10-01T11:05:13.879993Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game state initialized
+[2m2025-10-01T11:05:13.880390Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Crossterm configured
+[2m2025-10-01T11:05:24.488489Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Space key pressed, exiting game loop
+[2m2025-10-01T11:05:24.488837Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game loop exited
+[2m2025-10-01T11:05:26.970210Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Application started!
+[2m2025-10-01T11:05:26.979749Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Map generated
+[2m2025-10-01T11:05:26.979780Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game state initialized
+[2m2025-10-01T11:05:26.980364Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Crossterm configured
+[2m2025-10-01T11:05:34.184601Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Space key pressed, exiting game loop
+[2m2025-10-01T11:05:34.184879Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game loop exited
+[2m2025-10-01T11:05:36.812582Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Application started!
+[2m2025-10-01T11:05:36.823438Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Map generated
+[2m2025-10-01T11:05:36.823469Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game state initialized
+[2m2025-10-01T11:05:36.823883Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Crossterm configured
+[2m2025-10-01T11:06:10.821628Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Space key pressed, exiting game loop
+[2m2025-10-01T11:06:10.822063Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game loop exited
+[2m2025-10-01T11:06:20.952156Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Application started!
+[2m2025-10-01T11:06:20.964273Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Map generated
+[2m2025-10-01T11:06:20.964307Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game state initialized
+[2m2025-10-01T11:06:20.964645Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Crossterm configured
+[2m2025-10-01T11:31:11.744347Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Application started!
+[2m2025-10-01T11:31:11.756368Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Map generated
+[2m2025-10-01T11:31:11.756400Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game state initialized
+[2m2025-10-01T11:31:11.756865Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Crossterm configured
+[2m2025-10-01T11:31:35.142686Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Application started!
+[2m2025-10-01T11:31:35.151110Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Map generated
+[2m2025-10-01T11:31:35.151142Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game state initialized
+[2m2025-10-01T11:31:35.151559Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Crossterm configured
+[2m2025-10-01T11:33:30.482809Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Space key pressed, exiting game loop
+[2m2025-10-01T11:33:30.483148Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game loop exited
+[2m2025-10-01T11:33:32.309582Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Application started!
+[2m2025-10-01T11:33:32.320153Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Map generated
+[2m2025-10-01T11:33:32.320183Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game state initialized
+[2m2025-10-01T11:33:32.320446Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Crossterm configured
+[2m2025-10-01T11:33:34.609011Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Space key pressed, exiting game loop
+[2m2025-10-01T11:33:34.609294Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game loop exited
+[2m2025-10-01T11:33:37.085379Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Application started!
+[2m2025-10-01T11:33:37.096070Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Map generated
+[2m2025-10-01T11:33:37.096100Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game state initialized
+[2m2025-10-01T11:33:37.096618Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Crossterm configured
+[2m2025-10-01T11:33:39.001264Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Space key pressed, exiting game loop
+[2m2025-10-01T11:33:39.001607Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game loop exited
+[2m2025-10-01T11:33:40.122521Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Application started!
+[2m2025-10-01T11:33:40.132927Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Map generated
+[2m2025-10-01T11:33:40.132966Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game state initialized
+[2m2025-10-01T11:33:40.133410Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Crossterm configured
+[2m2025-10-01T11:33:41.331146Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Space key pressed, exiting game loop
+[2m2025-10-01T11:33:41.331444Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game loop exited
+[2m2025-10-01T11:33:42.254200Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Application started!
+[2m2025-10-01T11:33:42.264749Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Map generated
+[2m2025-10-01T11:33:42.264780Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game state initialized
+[2m2025-10-01T11:33:42.265340Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Crossterm configured
+[2m2025-10-01T11:33:43.232656Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Space key pressed, exiting game loop
+[2m2025-10-01T11:33:43.233104Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game loop exited
+[2m2025-10-01T11:33:44.140638Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Application started!
+[2m2025-10-01T11:33:44.150494Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Map generated
+[2m2025-10-01T11:33:44.150526Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game state initialized
+[2m2025-10-01T11:33:44.151193Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Crossterm configured
+[2m2025-10-01T11:33:45.721691Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Space key pressed, exiting game loop
+[2m2025-10-01T11:33:45.722143Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game loop exited
+[2m2025-10-01T11:33:46.533817Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Application started!
+[2m2025-10-01T11:33:46.544335Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Map generated
+[2m2025-10-01T11:33:46.544365Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game state initialized
+[2m2025-10-01T11:33:46.544805Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Crossterm configured
+[2m2025-10-01T11:35:14.735807Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Application started!
+[2m2025-10-01T11:35:14.742868Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Map generated
+[2m2025-10-01T11:35:14.742898Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game state initialized
+[2m2025-10-01T11:35:14.743116Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Crossterm configured
+[2m2025-10-01T11:35:19.017375Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Space key pressed, exiting game loop
+[2m2025-10-01T11:35:19.017628Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game loop exited
+[2m2025-10-01T11:35:24.013016Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Application started!
+[2m2025-10-01T11:35:24.033168Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Map generated
+[2m2025-10-01T11:35:24.033199Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game state initialized
+[2m2025-10-01T11:35:24.033751Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Crossterm configured
+[2m2025-10-01T11:37:49.216180Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Application started!
+[2m2025-10-01T11:37:49.236082Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Map generated
+[2m2025-10-01T11:37:49.236115Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game state initialized
+[2m2025-10-01T11:37:49.236376Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Crossterm configured
+[2m2025-10-01T11:38:21.760178Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Application started!
+[2m2025-10-01T11:38:21.771566Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Map generated
+[2m2025-10-01T11:38:21.771597Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game state initialized
+[2m2025-10-01T11:38:21.771982Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Crossterm configured
+[2m2025-10-01T11:38:24.737786Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Space key pressed, exiting game loop
+[2m2025-10-01T11:38:24.738180Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game loop exited
+[2m2025-10-01T11:38:26.156602Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Application started!
+[2m2025-10-01T11:38:26.174898Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Map generated
+[2m2025-10-01T11:38:26.174928Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game state initialized
+[2m2025-10-01T11:38:26.175478Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Crossterm configured
+[2m2025-10-01T11:38:40.641328Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Space key pressed, exiting game loop
+[2m2025-10-01T11:38:40.641657Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game loop exited
+[2m2025-10-01T11:38:43.171293Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Application started!
+[2m2025-10-01T11:38:43.192101Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Map generated
+[2m2025-10-01T11:38:43.192130Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game state initialized
+[2m2025-10-01T11:38:43.192645Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Crossterm configured
+[2m2025-10-01T11:39:13.602370Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Space key pressed, exiting game loop
+[2m2025-10-01T11:39:13.602704Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game loop exited
+[2m2025-10-01T11:39:24.139796Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Application started!
+[2m2025-10-01T11:39:24.158143Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Map generated
+[2m2025-10-01T11:39:24.158172Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game state initialized
+[2m2025-10-01T11:39:24.158619Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Crossterm configured
+[2m2025-10-01T11:39:34.363552Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Space key pressed, exiting game loop
+[2m2025-10-01T11:39:34.363841Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game loop exited
+[2m2025-10-01T11:39:37.121816Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Application started!
+[2m2025-10-01T11:39:37.141585Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Map generated
+[2m2025-10-01T11:39:37.141617Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game state initialized
+[2m2025-10-01T11:39:37.142001Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Crossterm configured
+[2m2025-10-01T11:39:52.633559Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Space key pressed, exiting game loop
+[2m2025-10-01T11:39:52.633930Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game loop exited
+[2m2025-10-01T11:39:55.017961Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Application started!
+[2m2025-10-01T11:39:55.044404Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Map generated
+[2m2025-10-01T11:39:55.044455Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game state initialized
+[2m2025-10-01T11:39:55.044887Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Crossterm configured
+[2m2025-10-01T11:40:54.325586Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Space key pressed, exiting game loop
+[2m2025-10-01T11:40:54.325910Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game loop exited
+[2m2025-10-01T11:40:55.858375Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Application started!
+[2m2025-10-01T11:40:55.879285Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Map generated
+[2m2025-10-01T11:40:55.879339Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game state initialized
+[2m2025-10-01T11:40:55.879897Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Crossterm configured
+[2m2025-10-01T11:41:00.294073Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Space key pressed, exiting game loop
+[2m2025-10-01T11:41:00.294388Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game loop exited
+[2m2025-10-01T11:41:01.477870Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Application started!
+[2m2025-10-01T11:41:01.496569Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Map generated
+[2m2025-10-01T11:41:01.496599Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game state initialized
+[2m2025-10-01T11:41:01.496985Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Crossterm configured
+[2m2025-10-01T11:41:02.701043Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Space key pressed, exiting game loop
+[2m2025-10-01T11:41:02.701305Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game loop exited
+[2m2025-10-01T11:41:03.452212Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Application started!
+[2m2025-10-01T11:41:03.470698Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Map generated
+[2m2025-10-01T11:41:03.470730Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game state initialized
+[2m2025-10-01T11:41:03.471258Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Crossterm configured
+[2m2025-10-01T11:41:09.209420Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Space key pressed, exiting game loop
+[2m2025-10-01T11:41:09.210418Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game loop exited
