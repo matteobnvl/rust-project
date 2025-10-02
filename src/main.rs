@@ -15,21 +15,30 @@ use std::time::{Duration, Instant};
 
 mod utils;
 mod map;
+mod robot;
 
 pub struct GameState {
     map: Vec<Vec<map::Tile>>,
     width: u16,
     height: u16,
+    robot: robot::Robot,
 }
 
 impl GameState {
-    pub fn new(map: Vec<Vec<map::Tile>>, width: u16, height: u16) -> Self {
-        Self { map, width, height }
+    pub fn new(map: Vec<Vec<map::Tile>>, width: u16, height: u16, robot: robot::Robot) -> Self {
+        Self { map, width, height, robot }
     }
     
     pub fn update(&mut self) {
-        // Logique de mise à jour du jeu
+        let (x, y) = self.robot.position;
+        self.map[y as usize][x as usize] = map::Tile::Floor; // erase old pos
+
+        robot::move_robot(&mut self.robot, self.width, self.height); // move robot
+
+        let (new_x, new_y) = self.robot.position;
+        self.map[new_y as usize][new_x as usize] = map::Tile::Eclaireur; // draw new pos
     }
+
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -55,8 +64,8 @@ fn main() -> Result<()> {
     let area: Size = terminal.size().map_err(SimulationError::Io)?;
     let sources = map::generate_sources_rand(area.width, area.height)?;
     let mut map = map::generate_map(area.width, area.height)?;
-    let start_x = (area.width / 2) - 3;
-    let start_y = (area.height / 2) - 3;
+    let start_x = (area.width / 2) - 1;
+    let start_y = (area.height / 2) - 1;
 
     for y in start_y..start_y + 3 {
         for x in start_x..start_x + 3 {
@@ -70,8 +79,13 @@ fn main() -> Result<()> {
         }
     });
 
+    let mut robot = robot::robots_eclaireur(area.width, area.height);
+    // robot::move_robot(&mut robot);
+    // let position = robot::get_robot_position(&robot);
+    // map[position.1 as usize][position.0 as usize] = map::Tile::Eclaireur;
+
     tracing::info!("Map generated");
-    let mut game_state = GameState::new(map, area.width, area.height);
+    let mut game_state = GameState::new(map, area.width, area.height, robot);
 
     tracing::info!("Game state initialized");
 
@@ -124,6 +138,7 @@ fn render_map_simple(f: &mut Frame<'_>, game_state: &GameState, area: Size) {
                         map::Tile::Source => ('E', Color::Green),
                         map::Tile::Cristal => ('C', Color::LightMagenta),
                         map::Tile::Base => ('#', Color::LightGreen),
+                        map::Tile::Eclaireur => ('X', Color::Red),
                     };
                     Span::styled(ch.to_string(), Style::default().fg(color))
                 })

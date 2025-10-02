@@ -9,6 +9,7 @@ pub enum Tile {
     Source,
     Cristal,
     Base,
+    Eclaireur
 }
 
 // pub struct Map {
