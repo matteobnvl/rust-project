@@ -31,18 +31,18 @@ impl GameState {
     
     pub fn update(&mut self) {
         let robot_position: robot::RobotPosition = self.robot.position;
-        // let view_robot_size = 1;
-        if self.map[robot_position.1 as usize][robot_position.0 as usize] == map::Tile::Floor {
+
+        if self.map[robot_position.1 as usize][robot_position.0 as usize] == map::Tile::Eclaireur {
             self.map[robot_position.1 as usize][robot_position.0 as usize] = map::Tile::Explored;
         }
-        robot::move_robot(&mut self.robot, self.width, self.height); // move robot
-        robot::explore_map(&mut self.robot, self.width, self.height, 1, &mut self.map); // explore around
 
+        robot::move_robot(&mut self.robot, &self.map, self.width, self.height);
 
-        let new_robot_position: robot::RobotPosition = self.robot.position;
-        self.map[new_robot_position.1 as usize][new_robot_position.0 as usize] = map::Tile::Eclaireur; // draw new pos
+        robot::explore_map_with_bfs(&mut self.robot, self.width, self.height, &mut self.map, 1);
+
+        let robot_position: robot::RobotPosition = self.robot.position;
+        self.map[robot_position.1 as usize][robot_position.0 as usize] = map::Tile::Eclaireur;
     }
-
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -151,7 +151,7 @@ fn render_map_simple(f: &mut Frame<'_>, game_state: &GameState, area: Size) {
                 .collect();
             Line::from(spans)
         })
-        .collect();
+        .collect(); 
 
     let map_widget = Paragraph::new(map_lines);
     f.render_widget(map_widget, Rect::new(0, 0, area.width, area.height));
