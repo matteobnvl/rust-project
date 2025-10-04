@@ -30,13 +30,17 @@ impl GameState {
     }
     
     pub fn update(&mut self) {
-        let (x, y) = self.robot.position;
-        self.map[y as usize][x as usize] = map::Tile::Floor; // erase old pos
-
+        let robot_position: robot::RobotPosition = self.robot.position;
+        // let view_robot_size = 1;
+        if self.map[robot_position.1 as usize][robot_position.0 as usize] == map::Tile::Floor {
+            self.map[robot_position.1 as usize][robot_position.0 as usize] = map::Tile::Explored;
+        }
         robot::move_robot(&mut self.robot, self.width, self.height); // move robot
+        robot::explore_map(&mut self.robot, self.width, self.height, 1, &mut self.map); // explore around
 
-        let (new_x, new_y) = self.robot.position;
-        self.map[new_y as usize][new_x as usize] = map::Tile::Eclaireur; // draw new pos
+
+        let new_robot_position: robot::RobotPosition = self.robot.position;
+        self.map[new_robot_position.1 as usize][new_robot_position.0 as usize] = map::Tile::Eclaireur; // draw new pos
     }
 
 }
@@ -61,7 +65,8 @@ fn main() -> Result<()> {
     let mut _rng = StdRng::from_seed(REPEATED_SEED);
 
     let terminal = ratatui::init();
-    let area: Size = terminal.size().map_err(SimulationError::Io)?;
+    let area: Size = terminal.size().map_err(SimulationError::Io)? ;
+
     let sources = map::generate_sources_rand(area.width, area.height)?;
     let mut map = map::generate_map(area.width, area.height)?;
     let start_x = (area.width / 2) - 1;
@@ -139,6 +144,7 @@ fn render_map_simple(f: &mut Frame<'_>, game_state: &GameState, area: Size) {
                         map::Tile::Cristal => ('C', Color::LightMagenta),
                         map::Tile::Base => ('#', Color::LightGreen),
                         map::Tile::Eclaireur => ('X', Color::Red),
+                        map::Tile::Explored => ('░', Color::Gray),
                     };
                     Span::styled(ch.to_string(), Style::default().fg(color))
                 })

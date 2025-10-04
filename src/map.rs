@@ -3,13 +3,15 @@ use crate::SimulationError;
 use rand::prelude::*;
 
 #[derive(Clone)]
+#[derive(PartialEq)]
 pub enum Tile {
     Wall,
     Floor,
     Source,
     Cristal,
     Base,
-    Eclaireur
+    Eclaireur,
+    Explored
 }
 
 // pub struct Map {
