@@ -1,13 +1,16 @@
-use std::vec;
+use core::hash;
 use std::collections::HashSet;
+use std::collections::HashMap;
+use std::hash::Hash;
 
-use crate::map::{self, Tile};
+use crate::map::{Tile};
 use pathfinding::prelude::bfs_reach;
 
 pub struct Robot {
     pub position: RobotPosition,
     pub energy: u32,
     pub robot_type: RobotType,
+    pub map_discovered: HashMap<(u16, u16), Tile>,
     pub collected_resources: u32,
 }
 
@@ -16,8 +19,8 @@ pub enum RobotType {
     Eclaireur,
     Collecteur,
 }
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RobotPosition(pub u16, pub u16);
 
 impl RobotPosition {
@@ -53,6 +56,7 @@ pub fn robots_eclaireur(width: u16, height: u16) -> Robot {
         position: center_map,
         energy: 100,
         robot_type: RobotType::Eclaireur,
+        map_discovered: HashMap::new(),
         collected_resources: 0,
     };
     return robot;
@@ -76,14 +80,42 @@ pub fn move_robot(robot: &mut Robot, map: &Vec<Vec<Tile>>, width: u16, height: u
     }
 }
 
+pub fn robot_vision(robot: &Robot, map: &Vec<Vec<Tile>>, width: u16, height: u16) -> HashMap<(u16, u16), Tile> {
+    let RobotPosition(rx, ry) = robot.position;
+    let mut map_around = HashMap::new();
+    for y_around in -1..=1 {
+        for x_around in -1..=1 {
+            let nx = rx as i16 + x_around;
+            let ny = ry as i16 + y_around;
+            if nx >= 0 && ny >= 0 && (nx as u16) < width && (ny as u16) < height {
+                map_around.insert((nx as u16, ny as u16), map[ny as usize][nx as usize].clone());
+            }
+        }
+    }
+
+    map_around
+}
+
+pub fn go_to_nearest_point(){
+    // A* implementation to go to nearest point of interest
+    // need to implement to allow robot to go to the nearest unexplored tile or resource
+}
+
 pub fn explore_map_with_bfs(robot: &mut Robot, width: u16, height: u16, map: &mut Vec<Vec<Tile>>, max_steps: usize) {
     let start = robot.position;
+
+    let around_robot = robot_vision(robot, map, width, height);
+    robot.map_discovered.extend(around_robot);
 
     let reachable = bfs_reach(start, |pos| pos.successors(map, width, height))
         .take(max_steps)
         .collect::<HashSet<_>>();
 
     for RobotPosition(x, y) in reachable {
+        let tile = &map[y as usize][x as usize];
+        
+        robot.map_discovered.insert((x, y), tile.clone());
+
         if map[y as usize][x as usize] == Tile::Floor {
             map[y as usize][x as usize] = Tile::Explored;
         }

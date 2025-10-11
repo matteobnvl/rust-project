@@ -84,7 +84,7 @@ fn main() -> Result<()> {
         }
     });
 
-    let mut robot = robot::robots_eclaireur(area.width, area.height);
+    let robot = robot::robots_eclaireur(area.width, area.height);
     // robot::move_robot(&mut robot);
     // let position = robot::get_robot_position(&robot);
     // map[position.1 as usize][position.0 as usize] = map::Tile::Eclaireur;
