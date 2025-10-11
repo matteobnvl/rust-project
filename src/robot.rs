@@ -5,7 +5,7 @@ use std::hash::Hash;
 
 use crate::map::{Tile};
 use crate::robot;
-use pathfinding::prelude::bfs_reach;
+use pathfinding::prelude::bfs;
 use pathfinding::prelude::astar;
 
 
@@ -132,29 +132,33 @@ pub fn move_robot(robot: &mut Robot, map: &mut Vec<Vec<Tile>>, width: u16, heigh
     }
 
     // Trouver la première case non explorée à atteindre avec BFS
-    let next_position = bfs_reach(current_position, |pos| {
-        pos.successors().into_iter()
-            .filter(|(p, _)| {
-                (p.0 < width) && (p.1 < height) && (p.0 as i16 >= 0) && (p.1 as i16 >= 0) && {
-                    let tile = &map[p.1 as usize][p.0 as usize];
-                    matches!(tile, Tile::Floor | Tile::Explored | Tile::Base)
-                }
-            })
-            .map(|(p, _)| p)
-    })
-    .skip(1) // ignorer la position actuelle
-    .find(|p| {
-        !matches!(robot.map_discovered.get(&(p.0, p.1)), Some(Tile::Explored | Tile::Base))
-    });
-
-    // Avancer d'une case vers cette position si elle existe
-    if let Some(next_pos) = next_position {
-        let is_successor = current_position.successors().iter().any(|(p, _)| *p == next_pos);
-        if is_successor {
-            robot.position = next_pos;
-        } else {
-            robot.map_discovered.insert((next_pos.0, next_pos.1), Tile::Explored);
-            go_to_nearest_point(robot, next_pos);
+    let path = bfs(
+        &current_position,
+        |pos| {
+            pos.successors().into_iter()
+                .filter(|(p, _)| {
+                    (p.0 < width) && (p.1 < height) && {
+                        let tile = &map[p.1 as usize][p.0 as usize];
+                        matches!(tile, Tile::Floor | Tile::Explored | Tile::Base)
+                    }
+                })
+                .map(|(p, _)| p)
+                .collect::<Vec<_>>()
+        },
+        |p| {
+            // Condition de succès : case non explorée
+            !matches!(robot.map_discovered.get(&(p.0, p.1)), Some(Tile::Explored | Tile::Base))
         }
+    );
+
+    if let Some(path) = path {
+        if path.len() > 1 {
+            robot.position = path[1]; // Prendre la prochaine étape du chemin
+            tracing::info!("🤖 Déplacement vers {:?}, cible finale: {:?}", path[1], path.last());
+        } else {
+            tracing::info!("📍 Déjà sur une case non explorée");
+        }
+    } else {
+        tracing::warn!("⚠️ Aucune case non explorée accessible");
     }
 }
