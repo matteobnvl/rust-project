@@ -4,6 +4,7 @@ use rand::prelude::*;
 
 #[derive(Clone)]
 #[derive(PartialEq)]
+#[derive(Debug)]
 pub enum Tile {
     Wall,
     Floor,

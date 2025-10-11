@@ -12,21 +12,30 @@ use ratatui::{
     text::{Span, Line},
 };
 use std::time::{Duration, Instant};
+use tokio::sync::{broadcast, mpsc};
 
 mod utils;
 mod map;
 mod robot;
+mod base;
 
 pub struct GameState {
     map: Vec<Vec<map::Tile>>,
     width: u16,
     height: u16,
     robot: robot::Robot,
+    _base: base::SharedBase
 }
 
 impl GameState {
-    pub fn new(map: Vec<Vec<map::Tile>>, width: u16, height: u16, robot: robot::Robot) -> Self {
-        Self { map, width, height, robot }
+    pub fn new(
+        map: Vec<Vec<map::Tile>>,
+        width: u16,
+        height: u16,
+        robot: robot::Robot,
+        base: base::SharedBase
+    ) -> Self {
+        Self { map, width, height, robot, _base: base }
     }
     
     pub fn update(&mut self) {
@@ -56,11 +65,23 @@ impl Display for SimulationError {
 
 pub type Result<T> = std::result::Result<T, SimulationError>;
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     let _guard = utils::configure_logger();
     tracing::info!("Application started!");
     const REPEATED_SEED: [u8; 32] = [0; 32];
     let mut _rng = StdRng::from_seed(REPEATED_SEED);
+
+    let (tx_base, rx_base) = mpsc::channel::<base::BaseMessage>(1024);
+    let (tx_broadcast, _rx_ignore) = broadcast::channel::<base::BroadcastMessage>(1024);
+    let base = base::Base::new(tx_broadcast.clone());
+
+    {
+        let base_clone = base.clone();
+        tokio::spawn(async move {
+            base_clone.run(rx_base).await;
+        });
+    }
 
     let terminal = ratatui::init();
     let area: Size = terminal.size().map_err(SimulationError::Io)? ;
@@ -88,7 +109,7 @@ fn main() -> Result<()> {
     // map[position.1 as usize][position.0 as usize] = map::Tile::Eclaireur;
 
     tracing::info!("Map generated");
-    let mut game_state = GameState::new(map, area.width, area.height, robot);
+    let mut game_state = GameState::new(map, area.width, area.height, robot, base);
 
     tracing::info!("Game state initialized");
 
@@ -123,20 +144,30 @@ fn run(mut terminal: DefaultTerminal, game_state: &mut GameState, area: Size) ->
         }
 
         terminal
-            .draw(|f| render_map_simple(f, game_state, area))
+            .draw(|f| {
+                tokio::task::block_in_place(|| {
+                    tokio::runtime::Handle::current().block_on(render_map_simple(f, game_state, area))
+                });
+            })
             .map_err(SimulationError::Io)?;
+
     }
 }
 
-fn render_map_simple(f: &mut Frame<'_>, game_state: &GameState, area: Size) {
-    let map_lines: Vec<Line> = game_state.map.iter()
+async fn render_map_simple(f: &mut Frame<'_>, game_state: &GameState, area: Size) {
+    use ratatui::widgets::{Block, Borders};
+
+    let map_lines: Vec<Line> = game_state
+        .map
+        .iter()
         .take(game_state.height as usize)
         .map(|row| {
-            let spans: Vec<Span> = row.iter()
+            let spans: Vec<Span> = row
+                .iter()
                 .take(game_state.width as usize)
                 .map(|tile| {
                     let (ch, color) = match tile {
-                        map::Tile::Wall => ('0', Color::LightCyan),
+                        map::Tile::Wall => ('O', Color::LightCyan),
                         map::Tile::Floor => (' ', Color::Reset),
                         map::Tile::Source => ('E', Color::Green),
                         map::Tile::Cristal => ('C', Color::LightMagenta),
@@ -149,8 +180,26 @@ fn render_map_simple(f: &mut Frame<'_>, game_state: &GameState, area: Size) {
                 .collect();
             Line::from(spans)
         })
-        .collect(); 
+        .collect();
 
-    let map_widget = Paragraph::new(map_lines);
-    f.render_widget(map_widget, Rect::new(0, 0, area.width, area.height));
+    let map_rect = Rect::new(0, 0, area.width, area.height - 2);
+    f.render_widget(Paragraph::new(map_lines).block(Block::default().borders(Borders::NONE)), map_rect);
+
+    let (energy, crystals) = game_state._base.totals().await;
+
+    let stats_text = Line::from(vec![
+        Span::styled(
+            format!("⚡ Énergie: {}", energy),
+            Style::default().fg(Color::Green),
+        ),
+        Span::raw("   |   "),
+        Span::styled(
+            format!("💎 Cristaux: {}", crystals),
+            Style::default().fg(Color::LightMagenta),
+        ),
+    ]);
+
+    let stats_rect = Rect::new(0, area.height - 2, area.width, 2);
+    let stats_widget = Paragraph::new(stats_text).block(Block::default().borders(Borders::TOP));
+    f.render_widget(stats_widget, stats_rect);
 }
