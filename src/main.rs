@@ -30,15 +30,18 @@ impl GameState {
     }
     
     pub fn update(&mut self) {
+        robot::move_robot(&mut self.robot, &mut self.map, self.width, self.height);
+        let base_center = (self.width / 2, self.height / 2);
         let robot_position: robot::RobotPosition = self.robot.position;
 
-        if self.map[robot_position.1 as usize][robot_position.0 as usize] == map::Tile::Eclaireur {
-            self.map[robot_position.1 as usize][robot_position.0 as usize] = map::Tile::Explored;
+        for dy in -1..=1 {
+            for dx in -1..=1 {
+                let bx = (base_center.0 as i16 + dx) as usize;
+                let by = (base_center.1 as i16 + dy) as usize;
+                self.map[by][bx] = map::Tile::Base;
+            }
         }
 
-        robot::move_robot(&mut self.robot, &mut self.map, self.width, self.height);
-
-        let robot_position: robot::RobotPosition = self.robot.position;
         self.map[robot_position.1 as usize][robot_position.0 as usize] = map::Tile::Eclaireur;
     }
 }

@@ -16,6 +16,7 @@ pub struct Robot {
     pub energy: u32,
     pub robot_type: RobotType,
     pub map_discovered: HashMap<(u16, u16), Tile>,
+    pub map_vision: HashMap<(u16, u16), Tile>,
     pub collected_resources: u32,
 }
 
@@ -35,8 +36,15 @@ impl RobotPosition {
 
     fn successors(&self) -> Vec<(RobotPosition, u16)> {
         let &RobotPosition(x, y) = self;
-        vec![RobotPosition(x + 1, y), RobotPosition(x - 1, y), RobotPosition(x, y + 1), RobotPosition(x, y - 1)]
-            .into_iter().map(|p| (p, 1)).collect()
+        let mut moves = Vec::new();
+        for (dx, dy) in &[(1i16,0), (-1,0), (0,1), (0,-1)] {
+            let nx = x as i16 + dx;
+            let ny = y as i16 + dy;
+            if nx >= 0 && ny >= 0 {
+                moves.push((RobotPosition(nx as u16, ny as u16), 1));
+            }
+        }
+        moves
     }
 }
 
@@ -47,6 +55,7 @@ pub fn robots_eclaireur(width: u16, height: u16) -> Robot {
         energy: 100,
         robot_type: RobotType::Eclaireur,
         map_discovered: HashMap::new(),
+        map_vision: HashMap::new(),
         collected_resources: 0,
     };
     return robot;
@@ -55,53 +64,68 @@ pub fn robots_eclaireur(width: u16, height: u16) -> Robot {
 pub fn robot_vision(robot: &Robot, map: &Vec<Vec<Tile>>, width: u16, height: u16) -> HashMap<(u16, u16), Tile> {
     let RobotPosition(rx, ry) = robot.position;
     let mut map_around = HashMap::new();
-    for y_around in -1..=1 {
-        for x_around in -1..=1 {
-            let nx = rx as i16 + x_around;
-            let ny = ry as i16 + y_around;
-            if nx >= 0 && ny >= 0 && (nx as u16) < width && (ny as u16) < height {
-                map_around.insert((nx as u16, ny as u16), map[ny as usize][nx as usize].clone());
+    let mut view_distance = 1;
+    loop {
+        for y_around in -view_distance..=view_distance {
+            for x_around in -view_distance..=view_distance {
+                let nx = rx as i16 + x_around;
+                let ny = ry as i16 + y_around;
+                if nx >= 0 && ny >= 0 && (nx as u16) < width && (ny as u16) < height {
+                    map_around.insert((nx as u16, ny as u16), map[ny as usize][nx as usize].clone());
+                }
             }
+        }
+        if map_around.iter().all(|(_, tile)| *tile == Tile::Base) {
+            view_distance += 1;
+            continue;
+        } else {
+            break;
         }
     }
 
     map_around
 }
 
-pub fn go_to_nearest_point(robot: &mut Robot, target: RobotPosition) -> () {
-    // let _guard = utils::configure_logger();
+pub fn go_to_nearest_point(robot: &mut Robot, target: RobotPosition) {
     tracing::info!("✅ Target point found: {:?}", target);
-    let result = astar(&robot.position, |p :&RobotPosition| p.successors(), |p| p.distance(&target) / 3 , |p| *p == target);
-    match result {
-        Some((path, _cost)) => {
-            if path.len() > 1 {
-                let next_step = path[1];
-                tracing::info!(
-                    "🤖 Déplacement étape par étape : {:?} -> {:?}",
-                    robot.position,
-                    next_step
-                );
-                robot.position = next_step;
-            } else {
-                tracing::info!("📍 Le robot est déjà sur la position cible {:?}", target);
-            }
+
+    let result = astar(
+        &robot.position,
+        |p: &RobotPosition| {
+            p.successors()
+             .into_iter()
+             .filter(|(next, _)| {
+                 // Ne passer que par les cases explorées ou la cible finale
+                 *next == target || matches!(robot.map_discovered.get(&(next.0, next.1)), Some(Tile::Explored))
+             })
+             .collect::<Vec<_>>()
+        },
+        |p| p.distance(&target),
+        |p| *p == target
+    );
+
+    if let Some((path, _cost)) = result {
+        if path.len() > 1 {
+            robot.position = path[1];
+        } else {
+            tracing::info!("📍 Le robot est déjà sur la position cible {:?}", target);
         }
-        None => {
-            tracing::warn!("⚠️ Aucun chemin trouvé vers {:?}", target);
-        }
+    } else {
+        tracing::warn!("⚠️ Aucun chemin trouvé vers {:?}", target);
     }
 }
+
 
 pub fn move_robot(robot: &mut Robot, map: &mut Vec<Vec<Tile>>, width: u16, height: u16) {
     let current_position = robot.position;
 
     // Découverte autour du robot
     let around_robot = robot_vision(robot, map, width, height);
-    robot.map_discovered.extend(around_robot.clone());
+    robot.map_vision = around_robot.clone();
 
     // Marquer les cases explorées
     for (&(x, y), tile) in &around_robot {
-        if *tile == Tile::Floor {
+        if *tile == Tile::Floor || *tile == Tile::Eclaireur {
             map[y as usize][x as usize] = Tile::Explored;
             robot.map_discovered.insert((x, y), Tile::Explored);
         }
@@ -120,8 +144,7 @@ pub fn move_robot(robot: &mut Robot, map: &mut Vec<Vec<Tile>>, width: u16, heigh
     })
     .skip(1) // ignorer la position actuelle
     .find(|p| {
-        // On cherche la première case non explorée
-        !matches!(robot.map_discovered.get(&(p.0, p.1)), Some(Tile::Explored))
+        !matches!(robot.map_discovered.get(&(p.0, p.1)), Some(Tile::Explored | Tile::Base))
     });
 
     // Avancer d'une case vers cette position si elle existe
@@ -130,6 +153,7 @@ pub fn move_robot(robot: &mut Robot, map: &mut Vec<Vec<Tile>>, width: u16, heigh
         if is_successor {
             robot.position = next_pos;
         } else {
+            robot.map_discovered.insert((next_pos.0, next_pos.1), Tile::Explored);
             go_to_nearest_point(robot, next_pos);
         }
     }
