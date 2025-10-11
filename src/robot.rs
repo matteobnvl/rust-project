@@ -4,7 +4,12 @@ use std::collections::HashMap;
 use std::hash::Hash;
 
 use crate::map::{Tile};
+use crate::robot;
 use pathfinding::prelude::bfs_reach;
+use pathfinding::prelude::astar;
+
+
+use crate::utils;
 
 pub struct Robot {
     pub position: RobotPosition,
@@ -20,33 +25,18 @@ pub enum RobotType {
     Collecteur,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct RobotPosition(pub u16, pub u16);
 
 impl RobotPosition {
-    fn successors(&self, map: &Vec<Vec<Tile>>, width: u16, height: u16) -> Vec<RobotPosition> {
-        let directions = [
-            (1, 0),   // right
-            (-1, 0),  // left
-            (0, 1),   // down
-            (0, -1),  // up
-        ];
+    fn distance(&self, other: &RobotPosition) -> u16 {
+        (self.0.abs_diff(other.0) + self.1.abs_diff(other.1)) as u16
+    }
 
-        directions.iter().filter_map(|(delta_x, delta_y)| {
-            let nx = self.0 as i16 + delta_x;
-            let ny = self.1 as i16 + delta_y;
-            if nx >= 0 && ny >= 0 && (nx as u16) < width && (ny as u16) < height {
-                let tile = &map[ny as usize][nx as usize];
-                if matches!(tile, Tile::Floor | Tile::Explored | Tile::Source | Tile::Cristal | Tile::Base) {
-                    Some(RobotPosition(nx as u16, ny as u16))
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
-        .collect()
+    fn successors(&self) -> Vec<(RobotPosition, u16)> {
+        let &RobotPosition(x, y) = self;
+        vec![RobotPosition(x + 1, y), RobotPosition(x - 1, y), RobotPosition(x, y + 1), RobotPosition(x, y - 1)]
+            .into_iter().map(|p| (p, 1)).collect()
     }
 }
 
@@ -60,24 +50,6 @@ pub fn robots_eclaireur(width: u16, height: u16) -> Robot {
         collected_resources: 0,
     };
     return robot;
-}
-
-pub fn move_robot(robot: &mut Robot, map: &Vec<Vec<Tile>>, width: u16, height: u16) {
-    let possible_moves = robot.position.successors(map, width, height);
-
-    if let Some(new_position) = possible_moves.iter().find(|pos| {
-        let tile = &map[pos.1 as usize][pos.0 as usize];
-        matches!(tile, Tile::Floor)
-    }) {
-        robot.position = *new_position;
-        return;
-    }
-
-    if let Some(new_position) = possible_moves.get(0) {
-        if robot.position != *new_position {
-            robot.position = *new_position;
-        }
-    }
 }
 
 pub fn robot_vision(robot: &Robot, map: &Vec<Vec<Tile>>, width: u16, height: u16) -> HashMap<(u16, u16), Tile> {
@@ -96,35 +68,69 @@ pub fn robot_vision(robot: &Robot, map: &Vec<Vec<Tile>>, width: u16, height: u16
     map_around
 }
 
-pub fn go_to_nearest_point(){
-    // A* implementation to go to nearest point of interest
-    // need to implement to allow robot to go to the nearest unexplored tile or resource
-}
-
-pub fn explore_map_with_bfs(robot: &mut Robot, width: u16, height: u16, map: &mut Vec<Vec<Tile>>, max_steps: usize) {
-    let start = robot.position;
-
-    let around_robot = robot_vision(robot, map, width, height);
-    robot.map_discovered.extend(around_robot);
-
-    let reachable = bfs_reach(start, |pos| pos.successors(map, width, height))
-        .take(max_steps)
-        .collect::<HashSet<_>>();
-
-    for RobotPosition(x, y) in reachable {
-        let tile = &map[y as usize][x as usize];
-        
-        robot.map_discovered.insert((x, y), tile.clone());
-
-        if map[y as usize][x as usize] == Tile::Floor {
-            map[y as usize][x as usize] = Tile::Explored;
+pub fn go_to_nearest_point(robot: &mut Robot, target: RobotPosition) -> () {
+    // let _guard = utils::configure_logger();
+    tracing::info!("✅ Target point found: {:?}", target);
+    let result = astar(&robot.position, |p :&RobotPosition| p.successors(), |p| p.distance(&target) / 3 , |p| *p == target);
+    match result {
+        Some((path, _cost)) => {
+            if path.len() > 1 {
+                let next_step = path[1];
+                tracing::info!(
+                    "🤖 Déplacement étape par étape : {:?} -> {:?}",
+                    robot.position,
+                    next_step
+                );
+                robot.position = next_step;
+            } else {
+                tracing::info!("📍 Le robot est déjà sur la position cible {:?}", target);
+            }
+        }
+        None => {
+            tracing::warn!("⚠️ Aucun chemin trouvé vers {:?}", target);
         }
     }
 }
 
+pub fn move_robot(robot: &mut Robot, map: &mut Vec<Vec<Tile>>, width: u16, height: u16) {
+    let current_position = robot.position;
 
+    // Découverte autour du robot
+    let around_robot = robot_vision(robot, map, width, height);
+    robot.map_discovered.extend(around_robot.clone());
 
-// ✅ Summary: Best Pathfinding Methods for Your Scenario
-// Robot Type	Goal	Recommended Algorithm	Why
-// Explorer Robots	Explore entire map	BFS or Frontier-Based	Simple, complete, good for mapping
-// Resource Robots	Go to specific points quickly	A*	Fast, optimal path to known goals
+    // Marquer les cases explorées
+    for (&(x, y), tile) in &around_robot {
+        if *tile == Tile::Floor {
+            map[y as usize][x as usize] = Tile::Explored;
+            robot.map_discovered.insert((x, y), Tile::Explored);
+        }
+    }
+
+    // Trouver la première case non explorée à atteindre avec BFS
+    let next_position = bfs_reach(current_position, |pos| {
+        pos.successors().into_iter()
+            .filter(|(p, _)| {
+                (p.0 < width) && (p.1 < height) && (p.0 as i16 >= 0) && (p.1 as i16 >= 0) && {
+                    let tile = &map[p.1 as usize][p.0 as usize];
+                    matches!(tile, Tile::Floor | Tile::Explored | Tile::Base)
+                }
+            })
+            .map(|(p, _)| p)
+    })
+    .skip(1) // ignorer la position actuelle
+    .find(|p| {
+        // On cherche la première case non explorée
+        !matches!(robot.map_discovered.get(&(p.0, p.1)), Some(Tile::Explored))
+    });
+
+    // Avancer d'une case vers cette position si elle existe
+    if let Some(next_pos) = next_position {
+        let is_successor = current_position.successors().iter().any(|(p, _)| *p == next_pos);
+        if is_successor {
+            robot.position = next_pos;
+        } else {
+            go_to_nearest_point(robot, next_pos);
+        }
+    }
+}

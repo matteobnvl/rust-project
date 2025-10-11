@@ -36,9 +36,7 @@ impl GameState {
             self.map[robot_position.1 as usize][robot_position.0 as usize] = map::Tile::Explored;
         }
 
-        robot::move_robot(&mut self.robot, &self.map, self.width, self.height);
-
-        robot::explore_map_with_bfs(&mut self.robot, self.width, self.height, &mut self.map, 1);
+        robot::move_robot(&mut self.robot, &mut self.map, self.width, self.height);
 
         let robot_position: robot::RobotPosition = self.robot.position;
         self.map[robot_position.1 as usize][robot_position.0 as usize] = map::Tile::Eclaireur;
