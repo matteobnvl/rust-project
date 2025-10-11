@@ -1,4 +1,5 @@
 use std::fmt::Display;
+use std::collections::HashMap;
 
 use rand::{SeedableRng, rngs::StdRng};
 use ratatui::{
@@ -22,19 +23,34 @@ pub struct GameState {
     width: u16,
     height: u16,
     robots: Vec<robot::Robot>,
+    map_discovered: HashMap<(u16, u16), map::Tile>,
 }
 
 impl GameState {
     pub fn new(map: Vec<Vec<map::Tile>>, width: u16, height: u16, robots: Vec<robot::Robot>) -> Self {
-        Self { map, width, height, robots }
+        Self { map, width, height, robots, map_discovered: HashMap::new() }
     }
     
     pub fn update(&mut self) {
+        
         for robot in &mut self.robots {
             if robot.robot_type == robot::RobotType::Eclaireur {
                 robot::move_robot(robot, &mut self.map, self.width, self.height);
+                self.map_discovered.extend(robot.map_discovered.iter().map(|(x, y)| (*x, y.clone())));
             }
         }
+
+        if let Some((&(tx, ty), _)) = self.map_discovered.iter().find(|(_, tile)| matches!(tile, map::Tile::Source | map::Tile::Cristal)){
+            let target_pos = robot::RobotPosition(tx, ty);
+            for robot in &mut self.robots {
+                robot::get_discovered_map(robot,  &self.map_discovered);
+                if robot.robot_type == robot::RobotType::Collecteur {
+                    robot::collect_resources(robot, target_pos, &mut self.map, self.width, self.height);
+                }
+            }
+        }
+
+
         let base_center = (self.width / 2, self.height / 2);
         
         for dy in -1..=1 {
@@ -52,10 +68,6 @@ impl GameState {
                 robot::RobotType::Eclaireur => map::Tile::Eclaireur,
             };
             self.map[robot_position.1 as usize][robot_position.0 as usize] = tile;
-            // let robot::RobotPosition(rx, ry) = robot.position;
-            // if robot.robot_type == robot::RobotType::Eclaireur {
-            //     self.map[ry as usize][rx as usize] = map::Tile::Eclaireur;
-            // }
         }
     }
 }
