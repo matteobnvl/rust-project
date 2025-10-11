@@ -1,15 +1,10 @@
-use core::hash;
-use std::collections::HashSet;
 use std::collections::HashMap;
 use std::hash::Hash;
 
 use crate::map::{Tile};
-use crate::robot;
+
 use pathfinding::prelude::bfs;
 use pathfinding::prelude::astar;
-
-
-use crate::utils;
 
 pub struct Robot {
     pub position: RobotPosition,
@@ -17,6 +12,7 @@ pub struct Robot {
     pub robot_type: RobotType,
     pub map_discovered: HashMap<(u16, u16), Tile>,
     pub map_vision: HashMap<(u16, u16), Tile>,
+    pub found_resources: bool,
     pub collected_resources: u32,
 }
 
@@ -56,10 +52,26 @@ pub fn robots_eclaireur(width: u16, height: u16) -> Robot {
         robot_type: RobotType::Eclaireur,
         map_discovered: HashMap::new(),
         map_vision: HashMap::new(),
+        found_resources: false,
         collected_resources: 0,
     };
     return robot;
 }
+
+pub fn robots_collecteur(width: u16, height: u16) -> Robot {
+    let center_map: RobotPosition = RobotPosition(width / 2, height / 2);
+    let robot = Robot {
+        position: center_map,
+        energy: 100,
+        robot_type: RobotType::Collecteur,
+        map_discovered: HashMap::new(),
+        map_vision: HashMap::new(),
+        found_resources: false,
+        collected_resources: 0,
+    };
+    return robot;
+}
+
 
 pub fn robot_vision(robot: &Robot, map: &Vec<Vec<Tile>>, width: u16, height: u16) -> HashMap<(u16, u16), Tile> {
     let RobotPosition(rx, ry) = robot.position;
@@ -75,7 +87,7 @@ pub fn robot_vision(robot: &Robot, map: &Vec<Vec<Tile>>, width: u16, height: u16
                 }
             }
         }
-        if map_around.iter().all(|(_, tile)| *tile == Tile::Base) {
+        if robot.position == RobotPosition(width / 2, height / 2) && view_distance < 3 {
             view_distance += 1;
             continue;
         } else {
@@ -95,7 +107,6 @@ pub fn go_to_nearest_point(robot: &mut Robot, target: RobotPosition) {
             p.successors()
              .into_iter()
              .filter(|(next, _)| {
-                 // Ne passer que par les cases explorées ou la cible finale
                  *next == target || matches!(robot.map_discovered.get(&(next.0, next.1)), Some(Tile::Explored))
              })
              .collect::<Vec<_>>()
@@ -118,20 +129,39 @@ pub fn go_to_nearest_point(robot: &mut Robot, target: RobotPosition) {
 
 pub fn move_robot(robot: &mut Robot, map: &mut Vec<Vec<Tile>>, width: u16, height: u16) {
     let current_position = robot.position;
+    let center_map = RobotPosition(width / 2, height / 2);
 
-    // Découverte autour du robot
     let around_robot = robot_vision(robot, map, width, height);
     robot.map_vision = around_robot.clone();
 
-    // Marquer les cases explorées
     for (&(x, y), tile) in &around_robot {
-        if *tile == Tile::Floor || *tile == Tile::Eclaireur {
+        if *tile == Tile::Floor || *tile == Tile::Eclaireur || *tile == Tile::Collecteur {
             map[y as usize][x as usize] = Tile::Explored;
             robot.map_discovered.insert((x, y), Tile::Explored);
+        } else if *tile == Tile::Source {
+            map[y as usize][x as usize] = Tile::SourceFound;
+            robot.map_discovered.insert((x, y), tile.clone());
+        } else if *tile == Tile::Cristal {
+            map[y as usize][x as usize] = Tile::CristalFound;
+            robot.map_discovered.insert((x, y), tile.clone());
         }
     }
 
-    // Trouver la première case non explorée à atteindre avec BFS
+    if robot.found_resources && current_position == center_map {
+        tracing::info!("✅ Arrivé à la base, reset found_resources");
+        robot.found_resources = false;
+    }
+    
+    if around_robot.iter().any(|(_, tile)| matches!(tile, Tile::Cristal | Tile::Source)) && !robot.found_resources  {
+        robot.found_resources = true;
+    }
+    
+    if robot.found_resources && current_position != center_map {
+        tracing::info!("🏠 Retour à la base");
+        go_to_nearest_point(robot, center_map);
+        return;
+    }
+
     let path = bfs(
         &current_position,
         |pos| {
@@ -139,21 +169,20 @@ pub fn move_robot(robot: &mut Robot, map: &mut Vec<Vec<Tile>>, width: u16, heigh
                 .filter(|(p, _)| {
                     (p.0 < width) && (p.1 < height) && {
                         let tile = &map[p.1 as usize][p.0 as usize];
-                        matches!(tile, Tile::Floor | Tile::Explored | Tile::Base)
+                        matches!(tile, Tile::Floor | Tile::Explored | Tile::Base | Tile::Collecteur)
                     }
                 })
                 .map(|(p, _)| p)
                 .collect::<Vec<_>>()
         },
         |p| {
-            // Condition de succès : case non explorée
-            !matches!(robot.map_discovered.get(&(p.0, p.1)), Some(Tile::Explored | Tile::Base))
+            !matches!(robot.map_discovered.get(&(p.0, p.1)), Some(Tile::Explored))
         }
     );
 
     if let Some(path) = path {
         if path.len() > 1 {
-            robot.position = path[1]; // Prendre la prochaine étape du chemin
+            robot.position = path[1];
             tracing::info!("🤖 Déplacement vers {:?}, cible finale: {:?}", path[1], path.last());
         } else {
             tracing::info!("📍 Déjà sur une case non explorée");

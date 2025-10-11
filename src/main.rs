@@ -21,19 +21,22 @@ pub struct GameState {
     map: Vec<Vec<map::Tile>>,
     width: u16,
     height: u16,
-    robot: robot::Robot,
+    robots: Vec<robot::Robot>,
 }
 
 impl GameState {
-    pub fn new(map: Vec<Vec<map::Tile>>, width: u16, height: u16, robot: robot::Robot) -> Self {
-        Self { map, width, height, robot }
+    pub fn new(map: Vec<Vec<map::Tile>>, width: u16, height: u16, robots: Vec<robot::Robot>) -> Self {
+        Self { map, width, height, robots }
     }
     
     pub fn update(&mut self) {
-        robot::move_robot(&mut self.robot, &mut self.map, self.width, self.height);
+        for robot in &mut self.robots {
+            if robot.robot_type == robot::RobotType::Eclaireur {
+                robot::move_robot(robot, &mut self.map, self.width, self.height);
+            }
+        }
         let base_center = (self.width / 2, self.height / 2);
-        let robot_position: robot::RobotPosition = self.robot.position;
-
+        
         for dy in -1..=1 {
             for dx in -1..=1 {
                 let bx = (base_center.0 as i16 + dx) as usize;
@@ -42,7 +45,18 @@ impl GameState {
             }
         }
 
-        self.map[robot_position.1 as usize][robot_position.0 as usize] = map::Tile::Eclaireur;
+        for robot in &self.robots {
+            let robot_position = robot.position;
+            let tile = match robot.robot_type {
+                robot::RobotType::Collecteur => map::Tile::Collecteur,
+                robot::RobotType::Eclaireur => map::Tile::Eclaireur,
+            };
+            self.map[robot_position.1 as usize][robot_position.0 as usize] = tile;
+            // let robot::RobotPosition(rx, ry) = robot.position;
+            // if robot.robot_type == robot::RobotType::Eclaireur {
+            //     self.map[ry as usize][rx as usize] = map::Tile::Eclaireur;
+            // }
+        }
     }
 }
 
@@ -85,13 +99,14 @@ fn main() -> Result<()> {
         }
     });
 
-    let robot = robot::robots_eclaireur(area.width, area.height);
-    // robot::move_robot(&mut robot);
-    // let position = robot::get_robot_position(&robot);
-    // map[position.1 as usize][position.0 as usize] = map::Tile::Eclaireur;
+    let robot1 = robot::robots_eclaireur(area.width, area.height);
+    let robot2 = robot::robots_eclaireur(area.width, area.height);
+
+    let robot3 = robot::robots_collecteur(area.width, area.height);
+    let robot4 = robot::robots_collecteur(area.width, area.height);
 
     tracing::info!("Map generated");
-    let mut game_state = GameState::new(map, area.width, area.height, robot);
+    let mut game_state = GameState::new(map, area.width, area.height, vec![robot1, robot2, robot3, robot4]);
 
     tracing::info!("Game state initialized");
 
@@ -142,9 +157,12 @@ fn render_map_simple(f: &mut Frame<'_>, game_state: &GameState, area: Size) {
                         map::Tile::Wall => ('0', Color::LightCyan),
                         map::Tile::Floor => (' ', Color::Reset),
                         map::Tile::Source => ('E', Color::Green),
+                        map::Tile::SourceFound => ('E', Color::Blue),
                         map::Tile::Cristal => ('C', Color::LightMagenta),
+                        map::Tile::CristalFound => ('C', Color::Yellow),
                         map::Tile::Base => ('#', Color::LightGreen),
                         map::Tile::Eclaireur => ('X', Color::Red),
+                        map::Tile::Collecteur => ('H', Color::White),
                         map::Tile::Explored => ('░', Color::Gray),
                     };
                     Span::styled(ch.to_string(), Style::default().fg(color))
