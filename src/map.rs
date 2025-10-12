@@ -1,8 +1,9 @@
 use noise::{NoiseFn, Perlin};
 use rand::Rng;
 use ratatui::layout::Size;
-use std::cmp::{max, min};
 use std::sync::{Arc, RwLock};
+use std::collections::{BinaryHeap, HashMap};
+use std::cmp::Ordering;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Cell {
@@ -63,8 +64,7 @@ impl Map {
                 }
             }
         }
-
-        // Ressources aléatoires
+        
         let mut rng = rand::thread_rng();
         for y in 0..height {
             for x in 0..width {
@@ -109,7 +109,6 @@ impl Map {
         g[y][x] = cell;
     }
 
-    /// Décrémente une ressource de 1 si présente. Retourne Some(Cell::Energy/Crystal) si succès.
     pub fn try_collect_one(&self, x: usize, y: usize) -> Option<Cell> {
         let mut g = self.grid.write().unwrap();
         match g[y][x] {
@@ -126,36 +125,7 @@ impl Map {
             _ => None,
         }
     }
-}
 
-// ============================================
-// 🔥 A* Pathfinding : ajout complet à la suite
-// ============================================
-use std::collections::{BinaryHeap, HashMap};
-use std::cmp::Ordering;
-
-#[derive(Copy, Clone, Eq, PartialEq)]
-struct Node {
-    pos: (usize, usize),
-    cost: u32,
-    estimated_total_cost: u32,
-}
-
-impl Ord for Node {
-    fn cmp(&self, other: &Self) -> Ordering {
-        // inversion pour BinaryHeap (min-heap)
-        other.estimated_total_cost.cmp(&self.estimated_total_cost)
-            .then_with(|| self.pos.cmp(&other.pos))
-    }
-}
-
-impl PartialOrd for Node {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Map {
     fn heuristic(a: (usize, usize), b: (usize, usize)) -> u32 {
         ((a.0 as i32 - b.0 as i32).abs() + (a.1 as i32 - b.1 as i32).abs()) as u32
     }
@@ -195,7 +165,6 @@ impl Map {
 
         while let Some(current) = open_set.pop() {
             if current.pos == to {
-                // chemin trouvé → reconstruction
                 let mut path = vec![to];
                 let mut cur = to;
                 while let Some(prev) = came_from.get(&cur) {
@@ -231,5 +200,25 @@ impl Map {
             }
         }
         from
+    }
+}
+
+#[derive(Copy, Clone, Eq, PartialEq)]
+struct Node {
+    pos: (usize, usize),
+    cost: u32,
+    estimated_total_cost: u32,
+}
+
+impl Ord for Node {
+    fn cmp(&self, other: &Self) -> Ordering {
+        other.estimated_total_cost.cmp(&self.estimated_total_cost)
+            .then_with(|| self.pos.cmp(&other.pos))
+    }
+}
+
+impl PartialOrd for Node {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }

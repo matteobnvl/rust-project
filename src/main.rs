@@ -4,7 +4,7 @@ use std::fmt::Display;
 use std::time::{Duration, Instant};
 use tracing::{debug, info};
 
-mod utils;        // ⬅️ ton fichier utils.rs tel quel
+mod utils;
 mod map;
 mod base;
 mod robots;
@@ -20,7 +20,6 @@ fn main() -> Result<()> {
     let _guard = utils::configure_logger();
     info!("Starting simulation…");
 
-    // --- Init terminal & map ---
     let mut terminal = ratatui::init();
     let area = terminal.size().expect("terminal size");
     let area = terminal.size().expect("terminal size");
@@ -29,19 +28,13 @@ fn main() -> Result<()> {
         height: area.height,
     });
 
-    // --- Shared state (base + robots) ---
     let base_shared = BaseShared::new();
     let robots_shared = RobotsShared::new();
 
-    // --- Spawn async simulation (Tokio runtime) ---
-    //   - robots (scouts/collectors)
-    //   - base system (connaissances + totaux)
     let sim_handles = spawn_simulation(&mut map, &base_shared, &robots_shared)?;
 
-    // --- Event loop & render ---
     run_ui_loop(&mut terminal, &mut map, &base_shared, &robots_shared)?;
 
-    // --- Stop simulation tasks gracefully ---
     info!("Stopping simulation…");
     sim_handles.shutdown();
 
