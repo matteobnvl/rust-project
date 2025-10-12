@@ -1,4 +1,5 @@
 use std::fmt::Display;
+use std::collections::HashMap;
 
 use rand::{SeedableRng, rngs::StdRng};
 use ratatui::{
@@ -23,7 +24,8 @@ pub struct GameState {
     map: Vec<Vec<map::Tile>>,
     width: u16,
     height: u16,
-    robot: robot::Robot,
+    robots: Vec<robot::Robot>,
+    map_discovered: HashMap<(u16, u16), map::Tile>,
     _base: base::SharedBase
 }
 
@@ -32,23 +34,71 @@ impl GameState {
         map: Vec<Vec<map::Tile>>,
         width: u16,
         height: u16,
-        robot: robot::Robot,
+        robots: Vec<robot::Robot>,
         base: base::SharedBase
     ) -> Self {
-        Self { map, width, height, robot, _base: base }
+        Self {
+            map,
+            width,
+            height,
+            robots,
+            map_discovered: HashMap::new(),
+            _base: base,
+        }
     }
     
     pub fn update(&mut self) {
-        let robot_position: robot::RobotPosition = self.robot.position;
-
-        if self.map[robot_position.1 as usize][robot_position.0 as usize] == map::Tile::Eclaireur {
-            self.map[robot_position.1 as usize][robot_position.0 as usize] = map::Tile::Explored;
+        
+        for robot in &mut self.robots {
+            if robot.robot_type == robot::RobotType::Eclaireur {
+                robot::move_robot(robot, &mut self.map, self.width, self.height);
+                self.map_discovered.extend(robot.map_discovered.iter().map(|(x, y)| (*x, y.clone())));
+            }
         }
 
-        robot::move_robot(&mut self.robot, &mut self.map, self.width, self.height);
+        let mut reserved_positions: std::collections::HashSet<(u16, u16)> = self
+            .robots
+            .iter()
+            .filter_map(|r| r.target_resource)
+            .map(|pos| (pos.0, pos.1))
+            .collect();
 
-        let robot_position: robot::RobotPosition = self.robot.position;
-        self.map[robot_position.1 as usize][robot_position.0 as usize] = map::Tile::Eclaireur;
+        for robot in &mut self.robots {
+            robot::get_discovered_map(robot, &self.map_discovered);
+
+            if robot.robot_type == robot::RobotType::Collecteur {
+                if robot.target_resource.is_none() {
+                    if let Some(target_pos) = robot::find_nearest_resource(robot, &self.map_discovered, &reserved_positions) {
+                        robot.target_resource = Some(target_pos);
+                        reserved_positions.insert((target_pos.0, target_pos.1));
+                    }
+                }
+
+                if let Some(target) = robot.target_resource {
+                    robot::collect_resources(robot, target, &mut self.map, self.width, self.height);
+                }
+            }
+        }
+
+
+        let base_center = (self.width / 2, self.height / 2);
+        
+        for dy in -1..=1 {
+            for dx in -1..=1 {
+                let bx = (base_center.0 as i16 + dx) as usize;
+                let by = (base_center.1 as i16 + dy) as usize;
+                self.map[by][bx] = map::Tile::Base;
+            }
+        }
+
+        for robot in &self.robots {
+            let robot_position = robot.position;
+            let tile = match robot.robot_type {
+                robot::RobotType::Collecteur => map::Tile::Collecteur,
+                robot::RobotType::Eclaireur => map::Tile::Eclaireur,
+            };
+            self.map[robot_position.1 as usize][robot_position.0 as usize] = tile;
+        }
     }
 }
 
@@ -103,13 +153,14 @@ async fn main() -> Result<()> {
         }
     });
 
-    let robot = robot::robots_eclaireur(area.width, area.height);
-    // robot::move_robot(&mut robot);
-    // let position = robot::get_robot_position(&robot);
-    // map[position.1 as usize][position.0 as usize] = map::Tile::Eclaireur;
+    let robot1 = robot::robots_eclaireur(area.width, area.height);
+    let robot2 = robot::robots_eclaireur(area.width, area.height);
+
+    let robot3 = robot::robots_collecteur(area.width, area.height);
+    let robot4 = robot::robots_collecteur(area.width, area.height);
 
     tracing::info!("Map generated");
-    let mut game_state = GameState::new(map, area.width, area.height, robot, base);
+    let mut game_state = GameState::new(map, area.width, area.height, vec![robot1, robot2, robot3, robot4], base);
 
     tracing::info!("Game state initialized");
 
@@ -169,11 +220,14 @@ async fn render_map_simple(f: &mut Frame<'_>, game_state: &GameState, area: Size
                     let (ch, color) = match tile {
                         map::Tile::Wall => ('O', Color::LightCyan),
                         map::Tile::Floor => (' ', Color::Reset),
-                        map::Tile::Source => ('E', Color::Green),
-                        map::Tile::Cristal => ('C', Color::LightMagenta),
+                        map::Tile::Source(_) => ('E', Color::Green),
+                        map::Tile::SourceFound(_) => ('E', Color::Blue),
+                        map::Tile::Cristal(_) => ('C', Color::LightMagenta),
+                        map::Tile::CristalFound(_) => ('C', Color::Yellow),
                         map::Tile::Base => ('#', Color::LightGreen),
                         map::Tile::Eclaireur => ('X', Color::Red),
-                        map::Tile::Explored => ('░', Color::Gray),
+                        map::Tile::Collecteur => ('H', Color::White),
+                        map::Tile::Explored => (' ', Color::Gray),
                     };
                     Span::styled(ch.to_string(), Style::default().fg(color))
                 })

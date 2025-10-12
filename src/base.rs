@@ -57,8 +57,8 @@ impl Base {
                 BaseMessage::Collected { resource, amount } => {
                     let mut guard = self.state.write().await;
                     match resource {
-                        Tile::Source => guard.total_energy = guard.total_energy.saturating_add(amount),
-                        Tile::Cristal => guard.total_crystals = guard.total_crystals.saturating_add(amount),
+                        Tile::Source(_) => guard.total_energy = guard.total_energy.saturating_add(amount),
+                        Tile::Cristal(_) => guard.total_crystals = guard.total_crystals.saturating_add(amount),
                         _ => {} // ignore les autres tuiles
                     }
                     let _ = guard.tx_broadcast.send(BroadcastMessage::BaseStats {
