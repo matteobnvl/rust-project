@@ -108,7 +108,8 @@ pub fn collect_resources(robot: &mut Robot, target: RobotPosition, map: &mut Vec
         robot.target_resource = None;
         robot.found_resources = false;
         go_to_nearest_point(robot, RobotPosition(width / 2, height / 2));
-        return;
+        tracing::info!("⚠️ La ressource ciblée a déjà été collectée.");
+        return; 
     }
 
     if robot.position == RobotPosition(width / 2, height / 2) && robot.collected_resources > 0 {
@@ -133,9 +134,9 @@ pub fn collect_resources(robot: &mut Robot, target: RobotPosition, map: &mut Vec
         return;
     }
 
-    if robot.found_resources && robot.position != RobotPosition(width / 2, height / 2) {
+    if robot.found_resources && robot.position != RobotPosition(width / 2, height / 2) && robot.target_resource.is_some() {
        go_to_nearest_point(robot, RobotPosition(width / 2, height / 2));
-    } else if robot.map_discovered.get(&(target.0, target.1)) != Some(&Tile::Explored) {
+    } else if !robot.found_resources && robot.position != target && robot.target_resource.is_some() {
         go_to_nearest_point(robot, target);
     }
 
@@ -151,7 +152,7 @@ pub fn collect_resources(robot: &mut Robot, target: RobotPosition, map: &mut Vec
                     if *qty == 0 {
                         map[ty][tx] = Tile::Explored;
                         robot.map_discovered.insert((tx as u16, ty as u16), Tile::Explored);
-                        robot.target_resource = None;
+                        return
                     }
                 }
                 robot.found_resources = true;
@@ -164,7 +165,7 @@ pub fn collect_resources(robot: &mut Robot, target: RobotPosition, map: &mut Vec
                     if *qty == 0 {
                         map[ty][tx] = Tile::Explored;
                         robot.map_discovered.insert((tx as u16, ty as u16), Tile::Explored);
-                        robot.target_resource = None;
+                        return
                     }
                 }
                 robot.found_resources = true;
@@ -186,7 +187,7 @@ pub fn go_to_nearest_point(robot: &mut Robot, target: RobotPosition) {
             p.successors()
              .into_iter()
              .filter(|(next, _)| {
-                 *next == target || matches!(robot.map_discovered.get(&(next.0, next.1)), Some(Tile::Explored))
+                 *next == target || matches!(robot.map_discovered.get(&(next.0, next.1)), Some(Tile::Explored) | Some(Tile::SourceFound(_)) | Some(Tile::CristalFound(_)) | Some(Tile::Floor) | Some(Tile::Base) | Some(Tile::Eclaireur) | Some(Tile::Collecteur))
              })
              .collect::<Vec<_>>()
         },
@@ -224,9 +225,6 @@ pub fn move_robot(robot: &mut Robot, map: &mut Vec<Vec<Tile>>, width: u16, heigh
             Tile::Cristal(qty) => {
                 map[y as usize][x as usize] = Tile::CristalFound(*qty);
                 robot.map_discovered.insert((x, y), Tile::CristalFound(*qty));
-            }
-            Tile::Floor | Tile::Base | Tile::Explored => {
-                robot.map_discovered.insert((x, y), Tile::Explored);
             }
             _ => {}
         }
