@@ -68,11 +68,12 @@ impl GameState {
 
             if robot.robot_type == robot::RobotType::Collecteur {
                 if robot.target_resource.is_none() {
-                    if let Some(target_pos) = robot::find_nearest_resource(robot, &self.map_discovered, &reserved_positions) {
-                        robot.target_resource = Some(target_pos);
-                        reserved_positions.insert((target_pos.0, target_pos.1));
+                    if let Some(new_target) =  robot::find_nearest_resource(robot, &self.map_discovered, &reserved_positions) {
+                        robot.target_resource = Some(new_target);
+                        reserved_positions.insert((new_target.0, new_target.1));
                     }
                 }
+
 
                 if let Some(target) = robot.target_resource {
                     robot::collect_resources(robot, target, &mut self.map, self.width, self.height);
@@ -90,15 +91,6 @@ impl GameState {
                 self.map[by][bx] = map::Tile::Base;
             }
         }
-
-        // for robot in &self.robots {
-        //     let robot_position = robot.position;
-        //     let tile = match robot.robot_type {
-        //         robot::RobotType::Collecteur => map::Tile::Collecteur,
-        //         robot::RobotType::Eclaireur => map::Tile::Eclaireur,
-        //     };
-        //     self.map[robot_position.1 as usize][robot_position.0 as usize] = tile;
-        // }
     }
 }
 
