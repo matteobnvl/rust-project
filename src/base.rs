@@ -119,11 +119,6 @@ pub async fn base_loop(shared: BaseShared) {
             }
             MessageToBase::Collected { kind, amount } => {
                 let mut s = shared.stats.lock().unwrap();
-                match kind {
-                    Cell::Energy(_) => s.energy_total = s.energy_total.saturating_add(amount),
-                    Cell::Crystal(_) => s.crystal_total = s.crystal_total.saturating_add(amount),
-                    _ => {}
-                }
                 debug!(?kind, amount, "Base totals updated");
             }
             MessageToBase::ReachedBase { robot_id, unload } => {

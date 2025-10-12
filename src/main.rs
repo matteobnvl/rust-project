@@ -22,7 +22,6 @@ fn main() -> Result<()> {
 
     let mut terminal = ratatui::init();
     let area = terminal.size().expect("terminal size");
-    let area = terminal.size().expect("terminal size");
     let mut map = Map::from_area(ratatui::layout::Size {
         width: area.width,
         height: area.height,

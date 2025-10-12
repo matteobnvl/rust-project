@@ -39,12 +39,16 @@ pub fn spawn_simulation(
         .build()
         .map_err(|_| SimulationError::Spawn)?;
 
-    // Préparer les robots initiaux (2 scouts, 2 collecteurs)
+    // Préparer les robots initiaux
     let robots = vec![
         RobotState { id: 1, kind: RobotKind::Scout,     pos: map.base_pos, carrying: None },
         RobotState { id: 2, kind: RobotKind::Scout,     pos: map.base_pos, carrying: None },
         RobotState { id: 3, kind: RobotKind::Collector, pos: map.base_pos, carrying: None },
         RobotState { id: 4, kind: RobotKind::Collector, pos: map.base_pos, carrying: None },
+        RobotState { id: 5, kind: RobotKind::Scout,     pos: map.base_pos, carrying: None },
+        RobotState { id: 6, kind: RobotKind::Scout,     pos: map.base_pos, carrying: None },
+        RobotState { id: 7, kind: RobotKind::Collector, pos: map.base_pos, carrying: None },
+        RobotState { id: 8, kind: RobotKind::Collector, pos: map.base_pos, carrying: None },
     ];
 
     // Clones pour tasks
@@ -52,11 +56,20 @@ pub fn spawn_simulation(
     let map_clone_for_scout2 = map.clone();
     let map_clone_for_coll1 = map.clone();
     let map_clone_for_coll2 = map.clone();
+    let map_clone_for_scout3 = map.clone();
+    let map_clone_for_scout4 = map.clone();
+    let map_clone_for_coll3 = map.clone();
+    let map_clone_for_coll4 = map.clone();
 
     let base1 = base_shared.clone();
     let base2 = base_shared.clone();
     let base3 = base_shared.clone();
     let base4 = base_shared.clone();
+
+    let base5 = base_shared.clone();
+    let base6 = base_shared.clone();
+    let base7 = base_shared.clone();
+    let base8 = base_shared.clone();
 
     let robots_shared_clone = robots_shared.clone();
 
@@ -73,6 +86,11 @@ pub fn spawn_simulation(
         hs.push(tokio::spawn(scout_loop(2, map_clone_for_scout2, base2, robots_shared.clone())));
         hs.push(tokio::spawn(collector_loop(3, map_clone_for_coll1, base3, robots_shared.clone())));
         hs.push(tokio::spawn(collector_loop(4, map_clone_for_coll2, base4, robots_shared.clone())));
+
+        hs.push(tokio::spawn(scout_loop(5, map_clone_for_scout3, base5, robots_shared.clone())));
+        hs.push(tokio::spawn(scout_loop(6, map_clone_for_scout4, base6, robots_shared.clone())));
+        hs.push(tokio::spawn(collector_loop(7, map_clone_for_coll3, base7, robots_shared.clone())));
+        hs.push(tokio::spawn(collector_loop(8, map_clone_for_coll4, base8, robots_shared.clone())));
 
         hs
     });

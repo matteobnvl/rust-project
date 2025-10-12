@@ -149,7 +149,7 @@ pub async fn scout_loop(id: usize, map: Map, base: BaseShared, robots: RobotsSha
                 }
             } else {
                 let mut candidates: Vec<(usize, usize)> = Vec::new();
-                for _ in 0..12 {
+                for _ in 0..30 {
                     if let Some(t) = robots.pop_frontier().await {
                         candidates.push(t);
                     } else {
@@ -190,7 +190,7 @@ pub async fn scout_loop(id: usize, map: Map, base: BaseShared, robots: RobotsSha
                         .min()
                         .unwrap_or(0)
                 };
-                let score = d_me + 2 * d_others + (rng.gen_range(0..3) as i32);
+                let score = -(d_me as i32) + 2 * d_others + (rng.gen_range(0..3) as i32);
                 scored.push((t, score));
             }
 
@@ -437,6 +437,15 @@ pub async fn collector_loop(
                     }
                 }
             }
+
+            // Si aucune cible après tentative d'obtention: retourner à la base pour ne pas rester sur place
+            if local_targets.is_empty() && pos != map.base_pos {
+                let step = map.next_step_towards(pos, map.base_pos);
+                pos = step;
+                robots.update_pos(id, pos).await;
+                sleep(Duration::from_millis(80)).await;
+                continue;
+            }
         }
 
         if let Some(target) = local_targets.front().cloned() {
@@ -459,6 +468,15 @@ pub async fn collector_loop(
                 }
             }
 
+            sleep(Duration::from_millis(80)).await;
+            continue;
+        }
+
+        // Toujours se replacer à la base lorsqu'aucune mission n'est disponible
+        if pos != map.base_pos {
+            let step = map.next_step_towards(pos, map.base_pos);
+            pos = step;
+            robots.update_pos(id, pos).await;
             sleep(Duration::from_millis(80)).await;
             continue;
         }
