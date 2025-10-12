@@ -26,7 +26,11 @@ pub struct GameState {
     height: u16,
     robots: Vec<robot::Robot>,
     map_discovered: HashMap<(u16, u16), map::Tile>,
-    _base: base::SharedBase
+    _base: base::SharedBase,
+    pub energy: u32,
+    pub crystals: u32,
+    pub rx_broadcast: tokio::sync::broadcast::Receiver<base::BroadcastMessage>,
+    pub tx_base: mpsc::Sender<base::BaseMessage>,
 }
 
 impl GameState {
@@ -35,7 +39,9 @@ impl GameState {
         width: u16,
         height: u16,
         robots: Vec<robot::Robot>,
-        base: base::SharedBase
+        base: base::SharedBase,
+        rx_broadcast: tokio::sync::broadcast::Receiver<base::BroadcastMessage>,
+        tx_base: mpsc::Sender<base::BaseMessage>,
     ) -> Self {
         Self {
             map,
@@ -44,6 +50,10 @@ impl GameState {
             robots,
             map_discovered: HashMap::new(),
             _base: base,
+            energy: 0,
+            crystals: 0,
+            rx_broadcast,
+            tx_base
         }
     }
     
@@ -76,8 +86,8 @@ impl GameState {
 
 
                 if let Some(target) = robot.target_resource {
-                    robot::collect_resources(robot, target, &mut self.map, self.width, self.height);
-                }
+                    let tx_base = self.tx_base.clone();
+                    robot::collect_resources(robot, target, &mut self.map, self.width, self.height, &tx_base);                }
             }
         }
 
@@ -115,7 +125,7 @@ async fn main() -> Result<()> {
     let mut _rng = StdRng::from_seed(REPEATED_SEED);
 
     let (tx_base, rx_base) = mpsc::channel::<base::BaseMessage>(1024);
-    let (tx_broadcast, _rx_ignore) = broadcast::channel::<base::BroadcastMessage>(1024);
+    let (tx_broadcast, mut rx_broadcast) = broadcast::channel::<base::BroadcastMessage>(1024);
     let base = base::Base::new(tx_broadcast.clone());
 
     {
@@ -152,7 +162,7 @@ async fn main() -> Result<()> {
     let robot4 = robot::robots_collecteur(area.width, area.height);
 
     tracing::info!("Map generated");
-    let mut game_state = GameState::new(map, area.width, area.height, vec![robot1, robot2, robot3, robot4], base);
+    let mut game_state = GameState::new(map, area.width, area.height, vec![robot1, robot2, robot3, robot4], base, rx_broadcast, tx_base.clone(),);
 
     tracing::info!("Game state initialized");
 
@@ -161,6 +171,7 @@ async fn main() -> Result<()> {
     ratatui::restore();
     res
 }
+
 fn run(mut terminal: DefaultTerminal, game_state: &mut GameState, area: Size) -> Result<()> {
     const TICK_RATE: Duration = Duration::from_millis(50);
 
@@ -172,6 +183,16 @@ fn run(mut terminal: DefaultTerminal, game_state: &mut GameState, area: Size) ->
             game_state.update();
             last_tick = Instant::now();
         }
+
+        while let Ok(msg) = game_state.rx_broadcast.try_recv() {
+            if let base::BroadcastMessage::BaseStats { energy, crystals } = msg {
+                game_state.energy = energy;
+                game_state.crystals = crystals;
+                tracing::info!("🏆 Score mis à jour : énergie = {}, cristaux = {}", energy, crystals);
+            }
+        }
+
+        last_tick = Instant::now();
 
         let timeout = TICK_RATE
             .checked_sub(last_tick.elapsed())
@@ -185,7 +206,6 @@ fn run(mut terminal: DefaultTerminal, game_state: &mut GameState, area: Size) ->
             }
         }
 
-
         terminal
             .draw(|f| render_map_simple(f, game_state, area))
             .map_err(SimulationError::Io)?;
@@ -193,9 +213,21 @@ fn run(mut terminal: DefaultTerminal, game_state: &mut GameState, area: Size) ->
 }
 
 fn render_map_simple(f: &mut Frame<'_>, game_state: &GameState, area: Size) {
+     let score_text = vec![
+        Line::from(vec![
+            Span::styled("Énergie: ", Style::default().fg(Color::Green)),
+            Span::styled(game_state.energy.to_string(), Style::default().fg(Color::White)),
+            Span::raw("   "),
+            Span::styled("Cristaux: ", Style::default().fg(Color::Magenta)),
+            Span::styled(game_state.crystals.to_string(), Style::default().fg(Color::White)),
+        ])
+    ];
+    let score_widget = Paragraph::new(score_text);
+    f.render_widget(score_widget, Rect::new(0, 0, area.width, 1));
+
     let map_lines: Vec<Line> = game_state.map.iter()
         .enumerate()
-        .take(game_state.height as usize)
+        .take((game_state.height.saturating_sub(1)) as usize)
         .map(|(y, row)| {
             let spans: Vec<Span> = row.iter()
                 .enumerate()
@@ -237,5 +269,6 @@ fn render_map_simple(f: &mut Frame<'_>, game_state: &GameState, area: Size) {
         .collect(); 
 
     let map_widget = Paragraph::new(map_lines);
-    f.render_widget(map_widget, Rect::new(0, 0, area.width, area.height));
+    f.render_widget(map_widget, Rect::new(0, 1, area.width, area.height));
 }
+

@@ -5,6 +5,8 @@ use crate::map::{Tile};
 
 use pathfinding::prelude::bfs;
 use pathfinding::prelude::astar;
+use tokio::sync::mpsc::Sender;
+use crate::base::BaseMessage;
 
 pub struct Robot {
     pub position: RobotPosition,
@@ -14,6 +16,7 @@ pub struct Robot {
     pub found_resources: bool,
     pub collected_resources: u32,
     pub target_resource: Option<RobotPosition>,
+    pub carried_resource: Option<Tile>,
 }
 
 #[derive(PartialEq)]
@@ -54,6 +57,7 @@ pub fn robots_eclaireur(width: u16, height: u16) -> Robot {
         found_resources: false,
         collected_resources: 0,
         target_resource: None,
+        carried_resource: None,
     };
     return robot;
 }
@@ -68,6 +72,7 @@ pub fn robots_collecteur(width: u16, height: u16) -> Robot {
         found_resources: false,
         collected_resources: 0,
         target_resource: None,
+        carried_resource: None,
     };
     return robot;
 }
@@ -98,9 +103,8 @@ pub fn robot_vision(robot: &Robot, map: &Vec<Vec<Tile>>, width: u16, height: u16
     map_around
 }
 
-pub fn collect_resources(robot: &mut Robot, target: RobotPosition, map: &mut Vec<Vec<Tile>>, width: u16, height: u16) {
-    
-    if robot.map_discovered.get(&(target.0, target.1)) == Some(&Tile::Explored) {
+pub fn collect_resources(robot: &mut Robot, target: RobotPosition, map: &mut Vec<Vec<Tile>>, width: u16, height: u16, tx_base: &Sender<BaseMessage>,) {
+    if matches!(map[target.1 as usize][target.0 as usize], Tile::Explored) {
         robot.target_resource = None;
         robot.found_resources = false;
         go_to_nearest_point(robot, RobotPosition(width / 2, height / 2));
@@ -108,10 +112,29 @@ pub fn collect_resources(robot: &mut Robot, target: RobotPosition, map: &mut Vec
         return; 
     }
 
+    if robot.position == RobotPosition(width / 2, height / 2) && robot.collected_resources > 0 {
+        let amount = robot.collected_resources;
+        robot.collected_resources = 0;
 
-    if robot.found_resources && robot.position == RobotPosition(width / 2, height / 2) && robot.target_resource.is_some() {
-       robot.found_resources = false;
-    } else if robot.found_resources && robot.position != RobotPosition(width / 2, height / 2) {
+        let resource_type = robot
+            .carried_resource
+            .clone()
+            .unwrap_or(Tile::Source(0));
+
+        let _ = tx_base.try_send(BaseMessage::Collected {
+            resource: resource_type.clone(),
+            amount,
+        });
+
+        tracing::info!("⚡ Robot collecteur a déposé {} unités à la base", amount);
+
+        robot.carried_resource = None;
+        robot.target_resource = None;
+        robot.found_resources = false;
+        return;
+    }
+
+    if robot.found_resources && robot.position != RobotPosition(width / 2, height / 2) && robot.target_resource.is_some() {
        go_to_nearest_point(robot, RobotPosition(width / 2, height / 2));
     } else if !robot.found_resources && robot.position != target && robot.target_resource.is_some() {
         go_to_nearest_point(robot, target);
@@ -125,6 +148,7 @@ pub fn collect_resources(robot: &mut Robot, target: RobotPosition, map: &mut Vec
                 if *qty > 0 {
                     *qty -= 1;
                     robot.collected_resources += 1;
+                    robot.carried_resource = Some(Tile::Source(0));
                     if *qty == 0 {
                         map[ty][tx] = Tile::Explored;
                         robot.map_discovered.insert((tx as u16, ty as u16), Tile::Explored);
@@ -137,6 +161,7 @@ pub fn collect_resources(robot: &mut Robot, target: RobotPosition, map: &mut Vec
                 if *qty > 0 {
                     *qty -= 1;
                     robot.collected_resources += 1;
+                    robot.carried_resource = Some(Tile::Cristal(0));
                     if *qty == 0 {
                         map[ty][tx] = Tile::Explored;
                         robot.map_discovered.insert((tx as u16, ty as u16), Tile::Explored);
