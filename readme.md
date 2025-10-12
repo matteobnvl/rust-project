@@ -12,7 +12,7 @@ Appuyez sur **n’importe quelle touche** pour quitter la simulation.
 
 ---
 
-## ⚙️ Démarrage rapide
+## Démarrage rapide
 
 ### Prérequis
 - Rust (stable) et Cargo installés → [https://rustup.rs](https://rustup.rs)
@@ -34,7 +34,7 @@ cargo run --release
 ```
 
 ---
-## 🧩 Architecture du projet
+## Architecture du projet
 
 Le code source se trouve dans le dossier `src/` :
 
@@ -52,7 +52,7 @@ Une documentation détaillée est disponible dans le dossier `docs/`, avec un fi
 
 ---
 
-## ⚙️ Fonctionnement général
+## Fonctionnement général
 
 ### Vue d’ensemble
 
@@ -82,7 +82,7 @@ Une documentation détaillée est disponible dans le dossier `docs/`, avec un fi
 
 ---
 
-## 🧠 Algorithmes et structures clés
+## Algorithmes et structures clés
 
 - **A\*** (plus court chemin) avec heuristique de Manhattan (coût uniforme = 1 par déplacement).
 - **Frontière BFS partagée** (`VecDeque`) et ensemble `visited` (`HashSet`) protégés par des `RwLock` asynchrones.
@@ -92,7 +92,7 @@ Une documentation détaillée est disponible dans le dossier `docs/`, avec un fi
 
 ---
 
-## 🕹️ Contrôles et conseils
+## Contrôles et conseils
 
 - La simulation continue jusqu’à ce que vous appuyiez sur une touche.
 - Redimensionnez votre terminal **avant** le lancement pour obtenir une carte plus grande.  
