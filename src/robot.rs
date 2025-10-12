@@ -11,7 +11,6 @@ pub struct Robot {
     pub energy: u32,
     pub robot_type: RobotType,
     pub map_discovered: HashMap<(u16, u16), Tile>,
-    pub map_vision: HashMap<(u16, u16), Tile>,
     pub found_resources: bool,
     pub collected_resources: u32,
     pub target_resource: Option<RobotPosition>,
@@ -52,7 +51,6 @@ pub fn robots_eclaireur(width: u16, height: u16) -> Robot {
         energy: 100,
         robot_type: RobotType::Eclaireur,
         map_discovered: HashMap::new(),
-        map_vision: HashMap::new(),
         found_resources: false,
         collected_resources: 0,
         target_resource: None,
@@ -67,7 +65,6 @@ pub fn robots_collecteur(width: u16, height: u16) -> Robot {
         energy: 100,
         robot_type: RobotType::Collecteur,
         map_discovered: HashMap::new(),
-        map_vision: HashMap::new(),
         found_resources: false,
         collected_resources: 0,
         target_resource: None,
@@ -102,39 +99,34 @@ pub fn robot_vision(robot: &Robot, map: &Vec<Vec<Tile>>, width: u16, height: u16
 }
 
 pub fn collect_resources(robot: &mut Robot, target: RobotPosition, map: &mut Vec<Vec<Tile>>, width: u16, height: u16) {
-
-    let around_robot = robot_vision(robot, map, width, height);
-    robot.map_vision = around_robot.clone();
-
-    for (&(x, y), tile) in &around_robot {
-        if *tile == Tile::Floor || *tile == Tile::Eclaireur || *tile == Tile::Collecteur {
-            map[y as usize][x as usize] = Tile::Explored;
-            robot.map_discovered.insert((x, y), Tile::Explored);
-        }
+    if matches!(map[target.1 as usize][target.0 as usize], Tile::Explored) {
+        robot.target_resource = None;
+        robot.found_resources = false;
+        go_to_nearest_point(robot, RobotPosition(width / 2, height / 2));
+        return;
     }
 
-    if robot.found_resources && robot.position == RobotPosition(width / 2, height / 2) {
-       tracing::info!("✅ Arrivé à la base, reset found_resources");
+    if robot.found_resources && robot.position == RobotPosition(width / 2, height / 2) && robot.target_resource.is_some() {
+        robot.target_resource = None;
        robot.found_resources = false;
     } else if robot.found_resources && robot.position != RobotPosition(width / 2, height / 2) {
        go_to_nearest_point(robot, RobotPosition(width / 2, height / 2));
-    }else {
+    } else if robot.map_discovered.get(&(target.0, target.1)) != Some(&Tile::Explored) {
         go_to_nearest_point(robot, target);
     }
 
     if robot.position == target {
         let (tx, ty) = (target.0 as usize, target.1 as usize);
-        tracing::info!("🍻 Arrivé sur ressource {:?}", map[ty][tx]);
 
         match &mut map[ty][tx] {
             Tile::SourceFound(qty) => {
                 if *qty > 0 {
                     *qty -= 1;
                     robot.collected_resources += 1;
-                    tracing::info!("🔋 Collecté 1 énergie — reste {}", *qty);
                     if *qty == 0 {
                         map[ty][tx] = Tile::Explored;
-                        tracing::info!("⚡ Source épuisée");
+                        robot.map_discovered.insert((tx as u16, ty as u16), Tile::Explored);
+                        robot.target_resource = None;
                     }
                 }
                 robot.found_resources = true;
@@ -143,10 +135,10 @@ pub fn collect_resources(robot: &mut Robot, target: RobotPosition, map: &mut Vec
                 if *qty > 0 {
                     *qty -= 1;
                     robot.collected_resources += 1;
-                    tracing::info!("💎 Collecté 1 cristaux — reste {}", *qty);
                     if *qty == 0 {
                         map[ty][tx] = Tile::Explored;
-                        tracing::info!("💎 Cristal épuisé");
+                        robot.map_discovered.insert((tx as u16, ty as u16), Tile::Explored);
+                        robot.target_resource = None;
                     }
                 }
                 robot.found_resources = true;
@@ -161,7 +153,6 @@ pub fn get_discovered_map(robot: &mut Robot, discovered: &HashMap<(u16, u16), Ti
 }
 
 pub fn go_to_nearest_point(robot: &mut Robot, target: RobotPosition) {
-    tracing::info!("✅ Target point found: {:?}", target);
 
     let result = astar(
         &robot.position,
@@ -180,37 +171,42 @@ pub fn go_to_nearest_point(robot: &mut Robot, target: RobotPosition) {
     if let Some((path, _cost)) = result {
         if path.len() > 1 {
             robot.position = path[1];
-        } else {
-            tracing::info!("📍 Le robot est déjà sur la position cible {:?}", target);
         }
     } else {
         tracing::warn!("⚠️ Aucun chemin trouvé vers {:?}", target);
     }
 }
 
-
 pub fn move_robot(robot: &mut Robot, map: &mut Vec<Vec<Tile>>, width: u16, height: u16) {
     let current_position = robot.position;
     let center_map = RobotPosition(width / 2, height / 2);
 
+    if matches!(map[current_position.1 as usize][current_position.0 as usize], Tile::Floor | Tile::Base) {
+        map[current_position.1 as usize][current_position.0 as usize] = Tile::Explored;
+        robot.map_discovered.insert((current_position.0, current_position.1), Tile::Explored);
+    }
+
+
     let around_robot = robot_vision(robot, map, width, height);
-    robot.map_vision = around_robot.clone();
 
     for (&(x, y), tile) in &around_robot {
-        if *tile == Tile::Floor || *tile == Tile::Eclaireur || *tile == Tile::Collecteur {
-            map[y as usize][x as usize] = Tile::Explored;
-            robot.map_discovered.insert((x, y), Tile::Explored);
-        } else if let Tile::Source(qty) = tile {
-            map[y as usize][x as usize] = Tile::SourceFound(*qty);
-            robot.map_discovered.insert((x, y), tile.clone());
-        } else if let Tile::Cristal(qty) = tile {
-            map[y as usize][x as usize] = Tile::CristalFound(*qty);
-            robot.map_discovered.insert((x, y), tile.clone());
+        match tile {
+            Tile::Source(qty) => {
+                map[y as usize][x as usize] = Tile::SourceFound(*qty);
+                robot.map_discovered.insert((x, y), Tile::SourceFound(*qty));
+            }
+            Tile::Cristal(qty) => {
+                map[y as usize][x as usize] = Tile::CristalFound(*qty);
+                robot.map_discovered.insert((x, y), Tile::CristalFound(*qty));
+            }
+            Tile::Floor | Tile::Base | Tile::Explored => {
+                robot.map_discovered.insert((x, y), Tile::Explored);
+            }
+            _ => {}
         }
     }
 
     if robot.found_resources && current_position == center_map {
-        tracing::info!("✅ Arrivé à la base, reset found_resources");
         robot.found_resources = false;
     }
     
@@ -219,19 +215,18 @@ pub fn move_robot(robot: &mut Robot, map: &mut Vec<Vec<Tile>>, width: u16, heigh
     }
     
     if robot.found_resources && current_position != center_map {
-        tracing::info!("🏠 Retour à la base");
         go_to_nearest_point(robot, center_map);
         return;
     }
-
-    let path = bfs(
+    
+     let path = bfs(
         &current_position,
         |pos| {
             pos.successors().into_iter()
                 .filter(|(p, _)| {
                     (p.0 < width) && (p.1 < height) && {
                         let tile = &map[p.1 as usize][p.0 as usize];
-                        matches!(tile, Tile::Floor | Tile::Explored | Tile::Base | Tile::Collecteur)
+                        matches!(tile, Tile::Floor | Tile::Explored | Tile::Base)
                     }
                 })
                 .map(|(p, _)| p)
@@ -244,15 +239,14 @@ pub fn move_robot(robot: &mut Robot, map: &mut Vec<Vec<Tile>>, width: u16, heigh
 
     if let Some(path) = path {
         if path.len() > 1 {
-            robot.position = path[1];
-            tracing::info!("🤖 Déplacement vers {:?}, cible finale: {:?}", path[1], path.last());
-        } else {
-            tracing::info!("📍 Déjà sur une case non explorée");
-        }
+            let next_pos = path[1];
+            robot.position = next_pos;
+        } 
     } else {
-        tracing::warn!("⚠️ Aucune case non explorée accessible");
+        tracing::info!("🔄 Aucune case non explorée accessible, mouvement aléatoire");
     }
 }
+
 
 pub fn find_nearest_resource(
     robot: &Robot,

@@ -91,14 +91,14 @@ impl GameState {
             }
         }
 
-        for robot in &self.robots {
-            let robot_position = robot.position;
-            let tile = match robot.robot_type {
-                robot::RobotType::Collecteur => map::Tile::Collecteur,
-                robot::RobotType::Eclaireur => map::Tile::Eclaireur,
-            };
-            self.map[robot_position.1 as usize][robot_position.0 as usize] = tile;
-        }
+        // for robot in &self.robots {
+        //     let robot_position = robot.position;
+        //     let tile = match robot.robot_type {
+        //         robot::RobotType::Collecteur => map::Tile::Collecteur,
+        //         robot::RobotType::Eclaireur => map::Tile::Eclaireur,
+        //     };
+        //     self.map[robot_position.1 as usize][robot_position.0 as usize] = tile;
+        // }
     }
 }
 
@@ -169,7 +169,6 @@ async fn main() -> Result<()> {
     ratatui::restore();
     res
 }
-
 fn run(mut terminal: DefaultTerminal, game_state: &mut GameState, area: Size) -> Result<()> {
     const TICK_RATE: Duration = Duration::from_millis(50);
 
@@ -194,66 +193,57 @@ fn run(mut terminal: DefaultTerminal, game_state: &mut GameState, area: Size) ->
             }
         }
 
-        terminal
-            .draw(|f| {
-                tokio::task::block_in_place(|| {
-                    tokio::runtime::Handle::current().block_on(render_map_simple(f, game_state, area))
-                });
-            })
-            .map_err(SimulationError::Io)?;
 
+        terminal
+            .draw(|f| render_map_simple(f, game_state, area))
+            .map_err(SimulationError::Io)?;
     }
 }
 
-async fn render_map_simple(f: &mut Frame<'_>, game_state: &GameState, area: Size) {
-    use ratatui::widgets::{Block, Borders};
-
-    let map_lines: Vec<Line> = game_state
-        .map
-        .iter()
+fn render_map_simple(f: &mut Frame<'_>, game_state: &GameState, area: Size) {
+    let map_lines: Vec<Line> = game_state.map.iter()
+        .enumerate()
         .take(game_state.height as usize)
-        .map(|row| {
-            let spans: Vec<Span> = row
-                .iter()
+        .map(|(y, row)| {
+            let spans: Vec<Span> = row.iter()
+                .enumerate()
                 .take(game_state.width as usize)
-                .map(|tile| {
-                    let (ch, color) = match tile {
-                        map::Tile::Wall => ('O', Color::LightCyan),
-                        map::Tile::Floor => (' ', Color::Reset),
-                        map::Tile::Source(_) => ('E', Color::Green),
-                        map::Tile::SourceFound(_) => ('E', Color::Blue),
-                        map::Tile::Cristal(_) => ('C', Color::LightMagenta),
-                        map::Tile::CristalFound(_) => ('C', Color::Yellow),
-                        map::Tile::Base => ('#', Color::LightGreen),
-                        map::Tile::Eclaireur => ('X', Color::Red),
-                        map::Tile::Collecteur => ('H', Color::White),
-                        map::Tile::Explored => (' ', Color::Gray),
+                .map(|(x, tile)| {
+                    let robot_here = game_state.robots.iter()
+                        .find(|r| r.position.0 == x as u16 && r.position.1 == y as u16);
+                    
+                    let (ch, color) = if let Some(robot) = robot_here {
+                        match robot.robot_type {
+                            robot::RobotType::Eclaireur => ('X', Color::Red),
+                            robot::RobotType::Collecteur => ('Y', Color::White),
+                        }
+                    } else {
+                        match tile {
+                            map::Tile::Wall => ('0', Color::LightCyan),
+                            map::Tile::Floor => (' ', Color::Reset),
+                            map::Tile::Source(qty) => ('E', Color::Green),
+                            map::Tile::SourceFound(qty) => {
+                                if *qty > 0 { ('E', Color::Blue) } 
+                                else { ('░', Color::Gray) }
+                            },
+                            map::Tile::Cristal(qty) => ('C', Color::LightMagenta),
+                            map::Tile::CristalFound(qty) => {
+                                if *qty > 0 { ('C', Color::Yellow) } 
+                                else { ('░', Color::Gray) }
+                            },
+                            map::Tile::Base => ('#', Color::LightGreen),
+                            map::Tile::Eclaireur => ('X', Color::Red),
+                            map::Tile::Collecteur => ('Y', Color::White),
+                            map::Tile::Explored => ('░', Color::Gray),
+                        }
                     };
                     Span::styled(ch.to_string(), Style::default().fg(color))
                 })
                 .collect();
             Line::from(spans)
         })
-        .collect();
+        .collect(); 
 
-    let map_rect = Rect::new(0, 0, area.width, area.height - 2);
-    f.render_widget(Paragraph::new(map_lines).block(Block::default().borders(Borders::NONE)), map_rect);
-
-    let (energy, crystals) = game_state._base.totals().await;
-
-    let stats_text = Line::from(vec![
-        Span::styled(
-            format!("⚡ Énergie: {}", energy),
-            Style::default().fg(Color::Green),
-        ),
-        Span::raw("   |   "),
-        Span::styled(
-            format!("💎 Cristaux: {}", crystals),
-            Style::default().fg(Color::LightMagenta),
-        ),
-    ]);
-
-    let stats_rect = Rect::new(0, area.height - 2, area.width, 2);
-    let stats_widget = Paragraph::new(stats_text).block(Block::default().borders(Borders::TOP));
-    f.render_widget(stats_widget, stats_rect);
+    let map_widget = Paragraph::new(map_lines);
+    f.render_widget(map_widget, Rect::new(0, 0, area.width, area.height));
 }

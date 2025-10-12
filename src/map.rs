@@ -20,7 +20,7 @@ pub enum Tile {
 }
 
 pub fn generate_map(width: u16, height: u16) -> Result<Vec<Vec<Tile>>, SimulationError> {
-    let perlin = Perlin::new(65899529);
+    let perlin = Perlin::new(21);
     let scale = 0.1;
     let map = (0..height)
         .map(|y| {
@@ -49,11 +49,11 @@ pub fn generate_sources_rand(width: u16, height: u16) -> Result<Vec<(u16, u16, T
 
             if roll < 0.005 {
                 // 💡 0.5% de chances d’être une source d’énergie
-                let qty = rng.gen_range(50..=200);
+                let qty = rng.gen_range(5..=10);
                 sources.push((x, y, Tile::Source(qty)));
             } else if roll < 0.008 {
                 // 💡 0.3% de chances d’être un cristal
-                let qty = rng.gen_range(50..=200);
+                let qty = rng.gen_range(5..=10);
                 sources.push((x, y, Tile::Cristal(qty)));
             }
         }
