@@ -260,7 +260,7 @@ fn render_map_simple(f: &mut Frame<'_>, game_state: &GameState, area: Size) {
                             },
                             map::Tile::Base => ('#', Color::LightGreen),
                             map::Tile::Eclaireur => ('X', Color::Red),
-                            map::Tile::Collecteur => ('Y', Color::White),
+                            map::Tile::Collecteur => ('O', Color::Magenta),
                             map::Tile::Explored => ('░', Color::Gray),
                         }
                     };
