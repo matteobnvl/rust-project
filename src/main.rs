@@ -87,7 +87,9 @@ impl GameState {
 
                 if let Some(_target) = robot.target_resource {
                     let tx_base = self.tx_base.clone();
-                    robot::collect_resources(robot, &mut self.map, self.width, self.height, &tx_base, &mut reserved_positions);
+                     robot::collect_resources(robot, &mut self.map, self.width, self.height, &tx_base, &reserved_positions);
+                    self.map_discovered.extend(robot.map_discovered.iter().map(|(x, y)| (*x, y.clone())));
+
                 }
             }
         }
