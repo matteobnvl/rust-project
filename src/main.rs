@@ -66,6 +66,13 @@ impl GameState {
             }
         }
 
+        let resources_left = self.map_discovered
+            .values()
+            .filter(|t| matches!(t, map::Tile::SourceFound(qty) | map::Tile::CristalFound(qty) if *qty > 0))
+            .count();
+
+        tracing::info!("🔎 Ressources encore présentes: {}", resources_left);
+
         let mut reserved_positions: std::collections::HashSet<(u16, u16)> = self
             .robots
             .iter()
@@ -78,16 +85,38 @@ impl GameState {
 
             if robot.robot_type == robot::RobotType::Collecteur {
                 if robot.target_resource.is_none() {
-                    if let Some(new_target) =  robot::find_nearest_resource(robot, &self.map_discovered, &reserved_positions) {
+                    for ((x, y), tile) in self.map_discovered.clone() {
+                        match self.map[y as usize][x as usize] {
+                            map::Tile::Explored => {
+                                self.map_discovered.insert((x, y), map::Tile::Explored);
+                            }
+                            map::Tile::SourceFound(qty) | map::Tile::CristalFound(qty) if qty == 0 => {
+                                self.map_discovered.insert((x, y), map::Tile::Explored);
+                            }
+                            _ => {}
+                        }
+                    }
+
+                    if let Some(new_target) = robot::find_nearest_resource(robot, &self.map_discovered, &reserved_positions) {
                         robot.target_resource = Some(new_target);
                         reserved_positions.insert((new_target.0, new_target.1));
+                        tracing::info!("🎯 Nouvelle cible assignée : {:?}", new_target);
                     }
                 }
 
 
+
                 if let Some(_target) = robot.target_resource {
                     let tx_base = self.tx_base.clone();
+                    let before = robot.target_resource;
                     robot::collect_resources(robot, &mut self.map, self.width, self.height, &tx_base, &mut reserved_positions);
+
+                    if let Some(target) = before {
+                        if matches!(self.map[target.1 as usize][target.0 as usize], map::Tile::Explored) {
+                            self.map_discovered.insert((target.0, target.1), map::Tile::Explored);
+                        }
+                    }
+
                 }
             }
         }

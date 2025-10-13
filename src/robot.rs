@@ -101,33 +101,73 @@ pub fn robot_vision(robot: &Robot, map: &Vec<Vec<Tile>>, width: u16, height: u16
     map_around
 }
 
-pub fn collect_resources(robot: &mut Robot, map: &mut Vec<Vec<Tile>>, width: u16, height: u16, tx_base: &Sender<BaseMessage>, reserved: &mut HashSet<(u16, u16)>) {
+pub fn collect_resources(
+    robot: &mut Robot,
+    map: &mut Vec<Vec<Tile>>,
+    width: u16,
+    height: u16,
+    tx_base: &Sender<BaseMessage>,
+    reserved: &mut HashSet<(u16, u16)>
+) {
     let base = RobotPosition(width / 2, height / 2);
 
+    // ✅ Vérifie si la cible est déjà vide ou explorée
+    if let Some(target) = robot.target_resource {
+        if matches!(map[target.1 as usize][target.0 as usize], Tile::Explored) {
+            tracing::info!("⚠️ La ressource ciblée a déjà été collectée : {:?}", target);
+            reserved.remove(&(target.0, target.1));
+            robot.target_resource = None;
+            robot.found_resources = false;
+            robot.carried_resource = None;
+        }
+    }
+
+    // 🔍 Recherche d’une nouvelle cible si besoin
+    if robot.target_resource.is_none() {
+        if let Some(new_target) = find_nearest_resource(robot, &robot.map_discovered, reserved) {
+            robot.target_resource = Some(new_target);
+            reserved.insert((new_target.0, new_target.1));
+            tracing::info!("🎯 Nouvelle cible assignée : {:?}", new_target);
+        } else {
+            tracing::info!("Aucune nouvelle cible disponible.");
+            return;
+        }
+    }
+
+    // 🏠 Retour à la base si le robot transporte quelque chose
     if robot.collected_resources > 0 {
         if robot.position == base {
             let amount = robot.collected_resources;
             robot.collected_resources = 0;
-            let resource_type = robot.carried_resource.clone().unwrap();
-            let _ = tx_base.try_send(BaseMessage::Collected { resource: resource_type, amount });
-            tracing::info!("⚡ Robot collecteur a déposé {} unités à la base", amount);
-            robot.carried_resource = None;
+
+            if let Some(resource_type) = robot.carried_resource.take() {
+                let _ = tx_base.try_send(BaseMessage::Collected {
+                    resource: resource_type,
+                    amount,
+                });
+                tracing::info!(
+                    "⚡ Robot collecteur a déposé {} unités à la base",
+                    amount
+                );
+            } else {
+                tracing::warn!(
+                    "⚠️ Robot collecteur à la base sans ressource définie (amount={})",
+                    amount
+                );
+            }
+
+            // Reset complet après dépôt
             robot.found_resources = false;
-            robot.target_resource = None; // réinitialiser la cible
         } else {
             go_to_nearest_point(robot, base);
         }
         return;
     }
 
+    // 🎯 Vérifie l’état de la cible actuelle
     if let Some(target) = robot.target_resource {
         let (tx, ty) = (target.0 as usize, target.1 as usize);
         match map[ty][tx] {
-            Tile::Explored => {
-                reserved.remove(&(target.0, target.1));
-                robot.target_resource = None;
-                robot.found_resources = false;
-            }
             Tile::SourceFound(qty) | Tile::CristalFound(qty) if qty == 0 => {
                 map[ty][tx] = Tile::Explored;
                 robot.map_discovered.insert((tx as u16, ty as u16), Tile::Explored);
@@ -139,26 +179,17 @@ pub fn collect_resources(robot: &mut Robot, map: &mut Vec<Vec<Tile>>, width: u16
         }
     }
 
-    if robot.target_resource.is_none() {
-        if let Some(new_target) = find_nearest_resource(robot, &robot.map_discovered, reserved) {
-            robot.target_resource = Some(new_target);
-            reserved.insert((new_target.0, new_target.1));
-            tracing::info!("Nouvelle cible assignée : {:?}", new_target);
-        } else {
-            tracing::info!("Aucune nouvelle cible disponible.");
-            return;
-        }
-    }
-
+    // 🚶 Déplacement vers la cible
     let target = robot.target_resource.unwrap();
     if robot.position != target {
         go_to_nearest_point(robot, target);
         return;
     }
 
+    // ⛏️ Collecte sur la cible atteinte
     let (tx, ty) = (target.0 as usize, target.1 as usize);
-
     let mut emptied = false;
+
     match &mut map[ty][tx] {
         Tile::SourceFound(qty) if *qty > 0 => {
             *qty -= 1;
@@ -175,16 +206,32 @@ pub fn collect_resources(robot: &mut Robot, map: &mut Vec<Vec<Tile>>, width: u16
         _ => {}
     }
 
+    // 🚫 Si ressource épuisée, marquer comme explorée
     if emptied {
+    tracing::info!("✅ Ressource vidée à {:?}", target);
+
+        // Marquer la case comme explorée
         map[ty][tx] = Tile::Explored;
         robot.map_discovered.insert((tx as u16, ty as u16), Tile::Explored);
+        if let Some(global_tile) = robot.map_discovered.get_mut(&(tx as u16, ty as u16)) {
+            *global_tile = Tile::Explored;
+        }
         reserved.remove(&(tx as u16, ty as u16));
+
+        // Réinitialiser les infos
         robot.target_resource = None;
         robot.found_resources = false;
+
+        // 👉 Et le faire repartir à la base immédiatement
+        let base = RobotPosition(width / 2, height / 2);
+        go_to_nearest_point(robot, base);
+
+        // Important : on force la frame à se terminer ici
+        return;
     }
 
-}
 
+}
 
 pub fn get_discovered_map(robot: &mut Robot, discovered: &HashMap<(u16, u16), Tile>) {
     robot.map_discovered = discovered.clone();
@@ -288,11 +335,12 @@ pub fn find_nearest_resource( robot: &Robot, discovered: &HashMap<(u16, u16), Ti
     let resource_positions: Vec<RobotPosition> = discovered
         .iter()
         .filter(|(pos, tile)| {
-            !reserved.contains(&pos)
-                && matches!(
-                    tile,
-                    Tile::Source(_) | Tile::Cristal(_) | Tile::SourceFound(_) | Tile::CristalFound(_)
-                )
+            !reserved.contains(pos)
+                && match tile {
+                    Tile::Source(qty) | Tile::Cristal(qty) if *qty > 0 => true,
+                    Tile::SourceFound(qty) | Tile::CristalFound(qty) if *qty > 0 => true,
+                    _ => false,
+                }
         })
         .map(|(&pos, _)| RobotPosition(pos.0, pos.1))
         .collect();
