@@ -192,7 +192,7 @@ pub fn go_to_nearest_point(robot: &mut Robot, target: RobotPosition) {
             p.successors()
              .into_iter()
              .filter(|(next, _)| {
-                 *next == target || matches!(robot.map_discovered.get(&(next.0, next.1)), Some(Tile::Explored) | Some(Tile::SourceFound(_)) | Some(Tile::CristalFound(_)) | Some(Tile::Floor) | Some(Tile::Base) | Some(Tile::Eclaireur) | Some(Tile::Collecteur))
+                 *next == target || matches!(robot.map_discovered.get(&(next.0, next.1)), Some(Tile::Explored) | Some(Tile::SourceFound(_)) | Some(Tile::CristalFound(_)) | Some(Tile::Floor) | Some(Tile::Base))
              })
              .collect::<Vec<_>>()
         },
@@ -255,14 +255,14 @@ pub fn move_robot(robot: &mut Robot, map: &mut Vec<Vec<Tile>>, width: u16, heigh
                 .filter(|(p, _)| {
                     (p.0 < width) && (p.1 < height) && {
                         let tile = &map[p.1 as usize][p.0 as usize];
-                        matches!(tile, Tile::Floor | Tile::Explored | Tile::Base | Tile::SourceFound(_) | Tile::CristalFound(_) | Tile::Eclaireur | Tile::Collecteur)
+                        matches!(tile, Tile::Floor | Tile::Explored | Tile::Base | Tile::SourceFound(_) | Tile::CristalFound(_))
                     }
                 })
                 .map(|(p, _)| p)
                 .collect::<Vec<_>>()
         },
         |p| {
-            !matches!(robot.map_discovered.get(&(p.0, p.1)), Some(Tile::Explored) | Some(Tile::SourceFound(_)) | Some(Tile::CristalFound(_)) | Some(Tile::Base) | Some(Tile::Eclaireur) | Some(Tile::Collecteur))
+            !matches!(robot.map_discovered.get(&(p.0, p.1)), Some(Tile::Explored) | Some(Tile::SourceFound(_)) | Some(Tile::CristalFound(_)) | Some(Tile::Base))
         }
     );
 

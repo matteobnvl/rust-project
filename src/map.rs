@@ -14,8 +14,8 @@ pub enum Tile {
     CristalFound(u32),
     SourceFound(u32),
     Base,
-    Eclaireur,
-    Collecteur,
+    // Eclaireur,
+    // Collecteur,
     Explored
 }
 

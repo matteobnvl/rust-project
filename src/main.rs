@@ -66,6 +66,11 @@ impl GameState {
             }
         }
 
+        // let resources_left = self.map_discovered
+        //     .values()
+        //     .filter(|t| matches!(t, map::Tile::SourceFound(qty) | map::Tile::CristalFound(qty) if *qty > 0))
+        //     .count();
+
         let mut reserved_positions: std::collections::HashSet<(u16, u16)> = self
             .robots
             .iter()
@@ -73,11 +78,24 @@ impl GameState {
             .map(|pos| (pos.0, pos.1))
             .collect();
 
+
         for robot in &mut self.robots {
             robot::get_discovered_map(robot, &self.map_discovered);
 
             if robot.robot_type == robot::RobotType::Collecteur {
                 if robot.target_resource.is_none() {
+                    for ((x, y), tile) in self.map_discovered.clone() {
+                        match self.map[y as usize][x as usize] {
+                            map::Tile::Explored => {
+                                self.map_discovered.insert((x, y), map::Tile::Explored);
+                            }
+                            map::Tile::SourceFound(qty) | map::Tile::CristalFound(qty) if qty == 0 => {
+                                self.map_discovered.insert((x, y), map::Tile::Explored);
+                            }
+                            _ => {}
+                        }
+                    }
+
                     if let Some(new_target) =  robot::find_nearest_resource(robot, &self.map_discovered, &reserved_positions) {
                         robot.target_resource = Some(new_target);
                         reserved_positions.insert((new_target.0, new_target.1));
@@ -87,8 +105,14 @@ impl GameState {
 
                 if let Some(_target) = robot.target_resource {
                     let tx_base = self.tx_base.clone();
-                     robot::collect_resources(robot, &mut self.map, self.width, self.height, &tx_base, &reserved_positions);
-                    self.map_discovered.extend(robot.map_discovered.iter().map(|(x, y)| (*x, y.clone())));
+                    let before = robot.target_resource;
+                    robot::collect_resources(robot, &mut self.map, self.width, self.height, &tx_base, &mut reserved_positions);
+
+                    if let Some(target) = before {
+                        if matches!(self.map[target.1 as usize][target.0 as usize], map::Tile::Explored) {
+                            self.map_discovered.insert((target.0, target.1), map::Tile::Explored);
+                        }
+                    }
 
                 }
             }
@@ -242,7 +266,7 @@ fn render_map_simple(f: &mut Frame<'_>, game_state: &GameState, area: Size) {
                     let (ch, color) = if let Some(robot) = robot_here {
                         match robot.robot_type {
                             robot::RobotType::Eclaireur => ('X', Color::Red),
-                            robot::RobotType::Collecteur => ('Y', Color::White),
+                            robot::RobotType::Collecteur => ('O', Color::Magenta),
                         }
                     } else {
                         match tile {
@@ -259,8 +283,8 @@ fn render_map_simple(f: &mut Frame<'_>, game_state: &GameState, area: Size) {
                                 else { ('░', Color::Gray) }
                             },
                             map::Tile::Base => ('#', Color::LightGreen),
-                            map::Tile::Eclaireur => ('X', Color::Red),
-                            map::Tile::Collecteur => ('O', Color::Magenta),
+                            // map::Tile::Eclaireur => ('X', Color::Red),
+                            // map::Tile::Collecteur => ('O', Color::Magenta),
                             map::Tile::Explored => ('░', Color::Gray),
                         }
                     };
