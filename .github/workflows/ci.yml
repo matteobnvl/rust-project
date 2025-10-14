@@ -55,12 +55,13 @@ jobs:
   docs:
     name: Build & Deploy Docs
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
     needs: build-test-lint
     steps:
       - uses: actions/checkout@v4
       - name: Generate documentation
-        run: cargo doc --no-deps
+        run: |
+          cargo doc --no-deps --workspace --document-private-items -- --enable-index-page --resource-suffix "" --base-url /rust-project/
+          echo '<meta http-equiv="refresh" content="0; url=rust_project/">' > target/doc/index.html
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
