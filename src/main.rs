@@ -122,10 +122,11 @@ impl GameState {
                         && matches!(
                             self.map[target.1 as usize][target.0 as usize],
                             map::Tile::Explored
-                        ) {
-                            self.map_discovered
-                                .insert((target.0, target.1), map::Tile::Explored);
-                        }
+                        )
+                    {
+                        self.map_discovered
+                            .insert((target.0, target.1), map::Tile::Explored);
+                    }
                 }
             }
         }
@@ -248,10 +249,11 @@ fn run(mut terminal: DefaultTerminal, game_state: &mut GameState, area: Size) ->
             .unwrap_or(Duration::from_millis(0));
         if event::poll(timeout).map_err(SimulationError::Io)?
             && let Event::Key(key_event) = event::read().map_err(SimulationError::Io)?
-                && key_event.code == KeyCode::Char(' ') {
-                    tracing::info!("Space key pressed, exiting game loop");
-                    return Ok(());
-                }
+            && key_event.code == KeyCode::Char(' ')
+        {
+            tracing::info!("Space key pressed, exiting game loop");
+            return Ok(());
+        }
 
         terminal
             .draw(|f| render_map_simple(f, game_state, area))
