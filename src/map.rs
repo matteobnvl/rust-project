@@ -1,11 +1,8 @@
-use noise::{NoiseFn, Perlin};
 use crate::SimulationError;
-use rand::prelude::*;
+use noise::{NoiseFn, Perlin};
 use rand::Rng;
 
-#[derive(Clone)]
-#[derive(PartialEq)]
-#[derive(Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum Tile {
     Wall,
     Floor,
@@ -16,7 +13,7 @@ pub enum Tile {
     Base,
     // Eclaireur,
     // Collecteur,
-    Explored
+    Explored,
 }
 
 pub fn generate_map(width: u16, height: u16) -> Result<Vec<Vec<Tile>>, SimulationError> {
@@ -39,7 +36,10 @@ pub fn generate_map(width: u16, height: u16) -> Result<Vec<Vec<Tile>>, Simulatio
     Ok(map)
 }
 
-pub fn generate_sources_rand(width: u16, height: u16) -> Result<Vec<(u16, u16, Tile)>, SimulationError> {
+pub fn generate_sources_rand(
+    width: u16,
+    height: u16,
+) -> Result<Vec<(u16, u16, Tile)>, SimulationError> {
     let mut rng = rand::thread_rng();
     let mut sources: Vec<(u16, u16, Tile)> = Vec::new();
 
