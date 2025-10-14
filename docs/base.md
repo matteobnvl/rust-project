@@ -5,10 +5,10 @@ But du module
 
 Messages et types
 - enum BaseMessage
-  - Discovery { pos: RobotPosition, tile: Tile }: notification qu’un robot a découvert un `Tile` à une position donnée.
+  - Discovery { pos: RobotPosition, _tile: Tile }: notification qu’un robot a découvert un `Tile` à une position donnée.
   - Collected { resource: Tile, amount: u32 }: notification qu’une quantité a été collectée pour un type de ressource.
 - enum BroadcastMessage
-  - NewResource { pos: RobotPosition, tile: Tile }: diffusion d’une nouvelle ressource connue.
+  - NewResource { pos: RobotPosition, _tile: Tile }: diffusion d’une nouvelle ressource connue.
   - BaseStats { energy: u32, crystals: u32 }: diffusion des totaux de la base.
 - type SharedBase = Arc<Base>: pointeur partagé vers la base pour usage inter-tâches.
 

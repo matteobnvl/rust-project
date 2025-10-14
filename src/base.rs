@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use tokio::sync::{broadcast, mpsc, RwLock};
+use tokio::sync::{RwLock, broadcast, mpsc};
 
 use crate::map::Tile;
 use crate::robot::RobotPosition;
@@ -42,7 +42,7 @@ impl Base {
             }),
         })
     }
-    
+
     pub async fn run(self: Arc<Self>, mut rx_events: mpsc::Receiver<BaseMessage>) {
         while let Some(msg) = rx_events.recv().await {
             match msg {
@@ -57,8 +57,12 @@ impl Base {
                 BaseMessage::Collected { resource, amount } => {
                     let mut guard = self.state.write().await;
                     match resource {
-                        Tile::Source(_) => guard.total_energy = guard.total_energy.saturating_add(amount),
-                        Tile::Cristal(_) => guard.total_crystals = guard.total_crystals.saturating_add(amount),
+                        Tile::Source(_) => {
+                            guard.total_energy = guard.total_energy.saturating_add(amount)
+                        }
+                        Tile::Cristal(_) => {
+                            guard.total_crystals = guard.total_crystals.saturating_add(amount)
+                        }
                         _ => {} // ignore les autres tuiles
                     }
                     let _ = guard.tx_broadcast.send(BroadcastMessage::BaseStats {
@@ -69,7 +73,7 @@ impl Base {
             }
         }
     }
-    
+
     pub async fn totals(&self) -> (u32, u32) {
         let guard = self.state.read().await;
         (guard.total_energy, guard.total_crystals)
