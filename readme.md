@@ -20,3 +20,7 @@ Run in release mode (faster):
 ```bash
 cargo run --release
 ```
+
+## Documentation
+
+Retrouvez la documentation [ici](https://matteobnvl.github.io/rust-project). (https://matteobnvl.github.io/rust-project)
