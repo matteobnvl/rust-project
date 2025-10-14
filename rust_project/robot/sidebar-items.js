@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["RobotType"],"fn":["collect_resources","find_nearest_resource","get_discovered_map","go_to_nearest_point","move_robot","robot_vision","robots_collecteur","robots_eclaireur"],"struct":["Robot","RobotPosition"]};

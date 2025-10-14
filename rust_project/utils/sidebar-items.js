@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["clean_terminal","configure_logger"]};

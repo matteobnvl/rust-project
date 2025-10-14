@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["BaseMessage","BroadcastMessage"],"struct":["Base","BaseStateData"],"type":["SharedBase"]};

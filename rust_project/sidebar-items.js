@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["SimulationError"],"fn":["main","render_map_simple","run"],"mod":["base","map","robot","utils"],"struct":["GameState"],"type":["Result"]};

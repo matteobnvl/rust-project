@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Tile"],"fn":["generate_map","generate_sources_rand"]};
