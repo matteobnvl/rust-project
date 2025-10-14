@@ -1,6 +1,0 @@
-[2m2025-09-30T22:08:56.642966Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Application started!
-[2m2025-09-30T22:08:56.652910Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Map generated
-[2m2025-09-30T22:08:56.652951Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game state initialized
-[2m2025-09-30T22:08:56.653471Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Crossterm configured
-[2m2025-09-30T22:10:23.901600Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Space key pressed, exiting game loop
-[2m2025-09-30T22:10:23.902078Z[0m [32m INFO[0m [2mrust_project[0m[2m:[0m Game loop exited
