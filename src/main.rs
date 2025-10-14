@@ -82,13 +82,12 @@ fn run(mut terminal: DefaultTerminal, game_state: &mut GameState, area: Size) ->
         let timeout = TICK_RATE
             .checked_sub(last_tick.elapsed())
             .unwrap_or(Duration::from_millis(0));
-        if event::poll(timeout).map_err(SimulationError::Io)? {
-            if let Event::Key(key_event) = event::read().map_err(SimulationError::Io)? {
-                if key_event.code == KeyCode::Char(' ') {
-                    tracing::info!("Space key pressed, exiting game loop");
-                    return Ok(());
-                }
-            }
+        if event::poll(timeout).map_err(SimulationError::Io)?
+            && let Event::Key(key_event) = event::read().map_err(SimulationError::Io)?
+            && key_event.code == KeyCode::Char(' ')
+        {
+            tracing::info!("Space key pressed, exiting game loop");
+            return Ok(());
         }
 
         terminal

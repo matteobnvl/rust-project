@@ -36,26 +36,6 @@ pub fn generate_map(width: u16, height: u16) -> Result<Vec<Vec<Tile>>, Simulatio
     Ok(map)
 }
 
-pub fn generate_sources_rand(
-    width: u16,
-    height: u16,
-) -> Result<Vec<(u16, u16, Tile)>, SimulationError> {
-    let energy_quantity = rand::thread_rng().gen_range(50..200);
-    let cristal_quantity = rand::thread_rng().gen_range(50..200);
-    let mut sources: Vec<(u16, u16, Tile)> = Vec::new();
-    for _ in 0..energy_quantity {
-        let x = rand::thread_rng().gen_range(0..width);
-        let y = rand::thread_rng().gen_range(0..height);
-        sources.push((x, y, Tile::Source));
-    }
-    for _ in 0..cristal_quantity {
-        let x = rand::thread_rng().gen_range(0..width);
-        let y = rand::thread_rng().gen_range(0..height);
-        sources.push((x, y, Tile::Cristal));
-    }
-    Ok(sources)
-}
-
 pub fn generate_sources_noise(
     width: u16,
     height: u16,
