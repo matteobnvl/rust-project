@@ -60,7 +60,7 @@ jobs:
       - name: Generate documentation
         run: |
           cargo doc --no-deps --workspace --document-private-items
-          echo '<meta http-equiv="refresh" content="0; url=rust_project/">' > target/doc/index.html
+          echo '<meta http-equiv="refresh" content="0; url=rust_project/">' > target/doc/rust_project/index.html
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
