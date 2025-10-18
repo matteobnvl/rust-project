@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::fmt::Display;
 
 use rand::{SeedableRng, rngs::StdRng};
@@ -30,6 +31,8 @@ pub struct GameState {
     pub crystals: u32,
     pub rx_broadcast: tokio::sync::broadcast::Receiver<base::BroadcastMessage>,
     pub tx_base: mpsc::Sender<base::BaseMessage>,
+    pub last_visited: HashMap<(u16, u16), usize>,
+    pub pending_resources: HashSet<(u16, u16)>,
 }
 
 impl GameState {
@@ -53,22 +56,50 @@ impl GameState {
             crystals: 0,
             rx_broadcast,
             tx_base,
+            last_visited: HashMap::new(),
+            pending_resources: HashSet::new()
         }
     }
 
     pub fn update(&mut self) {
-        for robot in &mut self.robots {
-            if robot.robot_type == robot::RobotType::Eclaireur {
-                robot::move_robot(robot, &mut self.map, self.width, self.height);
-                self.map_discovered
-                    .extend(robot.map_discovered.iter().map(|(x, y)| (*x, y.clone())));
-            }
+        let eclaireur_positions: HashSet<(u16, u16)> = self.robots
+            .iter()
+            .filter(|r| r.robot_type == robot::RobotType::Eclaireur)
+            .map(|r| (r.position.0, r.position.1))
+            .collect();
+
+        for (robot_id, robot) in self.robots.iter_mut().enumerate() {
+        if robot.robot_type == robot::RobotType::Eclaireur {
+            // Positions des AUTRES éclaireurs (exclure le robot actuel)
+            let other_positions: HashSet<(u16, u16)> = eclaireur_positions
+                .iter()
+                .filter(|&&pos| pos != (robot.position.0, robot.position.1))
+                .copied()
+                .collect();
+            
+            // Marquer où ce robot est passé
+            self.last_visited.insert((robot.position.0, robot.position.1), robot_id);
+            
+            robot::move_robot(
+                robot, 
+                &mut self.map, 
+                self.width, 
+                self.height,
+                &other_positions,
+                &self.last_visited,
+                robot_id,
+                &mut self.pending_resources
+            );
+            
+            self.map_discovered
+                .extend(robot.map_discovered.iter().map(|(x, y)| (*x, y.clone())));
         }
+    }
 
         let mut reserved_positions: std::collections::HashSet<(u16, u16)> = self
             .robots
             .iter()
-            .filter(|r| r.robot_type == robot::RobotType::Collecteur)  // ← Seulement les collecteurs !
+            .filter(|r| r.robot_type == robot::RobotType::Collecteur)
             .filter_map(|r| r.target_resource)
             .map(|pos| (pos.0, pos.1))
             .collect();
