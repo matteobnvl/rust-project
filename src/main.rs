@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::Display;
+use std::thread;
+use std::sync::{Arc, Mutex};
 
 use rand::{SeedableRng, rngs::StdRng};
 use ratatui::{
@@ -62,41 +64,111 @@ impl GameState {
     }
 
     pub fn update(&mut self) {
+        
+        // Collecter les positions des éclaireurs
         let eclaireur_positions: HashSet<(u16, u16)> = self.robots
             .iter()
             .filter(|r| r.robot_type == robot::RobotType::Eclaireur)
             .map(|r| (r.position.0, r.position.1))
             .collect();
-
-        for (robot_id, robot) in self.robots.iter_mut().enumerate() {
-        if robot.robot_type == robot::RobotType::Eclaireur {
-            // Positions des AUTRES éclaireurs (exclure le robot actuel)
-            let other_positions: HashSet<(u16, u16)> = eclaireur_positions
-                .iter()
-                .filter(|&&pos| pos != (robot.position.0, robot.position.1))
-                .copied()
-                .collect();
-            
-            // Marquer où ce robot est passé
-            self.last_visited.insert((robot.position.0, robot.position.1), robot_id);
-            
-            robot::move_robot(
-                robot, 
-                &mut self.map, 
-                self.width, 
-                self.height,
-                &other_positions,
-                &self.last_visited,
-                robot_id,
-                &mut self.pending_resources
-            );
-            
+        
+        // Données partagées entre threads (avec Arc + Mutex)
+        let map_shared = Arc::new(Mutex::new(self.map.clone()));
+        let last_visited_shared = Arc::new(Mutex::new(self.last_visited.clone()));
+        let pending_shared = Arc::new(Mutex::new(self.pending_resources.clone()));
+        
+        // Séparer éclaireurs et collecteurs
+        let mut eclaireurs = Vec::new();
+        let mut collecteurs = Vec::new();
+        
+        for robot in self.robots.drain(..) {
+            if robot.robot_type == robot::RobotType::Eclaireur {
+                eclaireurs.push(robot);
+            } else {
+                collecteurs.push(robot);
+            }
+        }
+        
+        // ⭐ LANCER LES ÉCLAIREURS EN PARALLÈLE
+        let handles: Vec<_> = eclaireurs
+            .into_iter()
+            .enumerate()
+            .map(|(robot_id, mut robot)| {
+                let map_clone = Arc::clone(&map_shared);
+                let last_visited_clone = Arc::clone(&last_visited_shared);
+                let pending_clone = Arc::clone(&pending_shared);
+                let eclaireur_pos = eclaireur_positions.clone();
+                let width = self.width;
+                let height = self.height;
+                
+                thread::spawn(move || {
+                    let other_positions: HashSet<(u16, u16)> = eclaireur_pos
+                        .iter()
+                        .filter(|&&pos| pos != (robot.position.0, robot.position.1))
+                        .copied()
+                        .collect();
+                    
+                    // Mettre à jour last_visited
+                    {
+                        let mut lv = last_visited_clone.lock().unwrap();
+                        lv.insert((robot.position.0, robot.position.1), robot_id);
+                    }
+                    
+                    // Appeler move_robot avec les locks
+                    {
+                        let mut map = map_clone.lock().unwrap();
+                        let lv = last_visited_clone.lock().unwrap();
+                        let mut pending = pending_clone.lock().unwrap();
+                        
+                        robot::move_robot(
+                            &mut robot,
+                            &mut *map,
+                            width,
+                            height - 1,
+                            &other_positions,
+                            &lv,
+                            robot_id,
+                            &mut *pending
+                        );
+                    }
+                    
+                    robot
+                })
+            })
+            .collect();
+        
+        // Attendre que tous les threads se terminent
+        let mut eclaireurs: Vec<_> = handles
+            .into_iter()
+            .map(|h| h.join().expect("Thread éclaireur a paniqué"))
+            .collect();
+        
+        // Récupérer les données partagées
+        self.map = Arc::try_unwrap(map_shared)
+            .expect("Arc still has references")
+            .into_inner()
+            .unwrap();
+        self.last_visited = Arc::try_unwrap(last_visited_shared)
+            .expect("Arc still has references")
+            .into_inner()
+            .unwrap();
+        self.pending_resources = Arc::try_unwrap(pending_shared)
+            .expect("Arc still has references")
+            .into_inner()
+            .unwrap();
+        
+        // Mettre à jour map_discovered avec les découvertes de chaque éclaireur
+        for robot in &eclaireurs {
             self.map_discovered
                 .extend(robot.map_discovered.iter().map(|(x, y)| (*x, y.clone())));
         }
-    }
-
-        let mut reserved_positions: std::collections::HashSet<(u16, u16)> = self
+        
+        // Remettre les robots dans la liste
+        self.robots.append(&mut eclaireurs);
+        self.robots.append(&mut collecteurs);
+        
+        // ⭐ COLLECTEURS (séquentiel, pas besoin de paralléliser)
+        let mut reserved_positions: HashSet<(u16, u16)> = self
             .robots
             .iter()
             .filter(|r| r.robot_type == robot::RobotType::Collecteur)
@@ -157,8 +229,8 @@ impl GameState {
             }
         }
 
+        // Redessiner la base
         let base_center = (self.width / 2, self.height / 2);
-
         for dy in -1..=1 {
             for dx in -1..=1 {
                 let bx = (base_center.0 as i16 + dx) as usize;
@@ -168,7 +240,6 @@ impl GameState {
         }
     }
 }
-
 #[derive(Debug, thiserror::Error)]
 pub enum SimulationError {
     Io(#[from] std::io::Error),
@@ -203,8 +274,8 @@ async fn main() -> Result<()> {
     let terminal = ratatui::init();
     let area: Size = terminal.size().map_err(SimulationError::Io)?;
 
-    let sources = map::generate_sources_rand(area.width, area.height)?;
-    let mut map = map::generate_map(area.width, area.height)?;
+    let sources = map::generate_sources_rand(area.width, area.height - 1)?;
+    let mut map = map::generate_map(area.width, area.height - 1)?;
     let start_x = (area.width / 2) - 1;
     let start_y = (area.height / 2) - 1;
 
