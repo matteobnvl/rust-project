@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::Display;
-use std::thread;
 use std::sync::{Arc, Mutex};
+use std::thread;
 
 use rand::{SeedableRng, rngs::StdRng};
 use ratatui::{
@@ -59,28 +59,28 @@ impl GameState {
             rx_broadcast,
             tx_base,
             last_visited: HashMap::new(),
-            pending_resources: HashSet::new()
+            pending_resources: HashSet::new(),
         }
     }
 
     pub fn update(&mut self) {
-        
         // Collecter les positions des éclaireurs
-        let eclaireur_positions: HashSet<(u16, u16)> = self.robots
+        let eclaireur_positions: HashSet<(u16, u16)> = self
+            .robots
             .iter()
             .filter(|r| r.robot_type == robot::RobotType::Eclaireur)
             .map(|r| (r.position.0, r.position.1))
             .collect();
-        
+
         // Données partagées entre threads (avec Arc + Mutex)
         let map_shared = Arc::new(Mutex::new(self.map.clone()));
         let last_visited_shared = Arc::new(Mutex::new(self.last_visited.clone()));
         let pending_shared = Arc::new(Mutex::new(self.pending_resources.clone()));
-        
+
         // Séparer éclaireurs et collecteurs
         let mut eclaireurs = Vec::new();
         let mut collecteurs = Vec::new();
-        
+
         for robot in self.robots.drain(..) {
             if robot.robot_type == robot::RobotType::Eclaireur {
                 eclaireurs.push(robot);
@@ -88,7 +88,7 @@ impl GameState {
                 collecteurs.push(robot);
             }
         }
-        
+
         // ⭐ LANCER LES ÉCLAIREURS EN PARALLÈLE
         let handles: Vec<_> = eclaireurs
             .into_iter()
@@ -100,26 +100,26 @@ impl GameState {
                 let eclaireur_pos = eclaireur_positions.clone();
                 let width = self.width;
                 let height = self.height;
-                
+
                 thread::spawn(move || {
                     let other_positions: HashSet<(u16, u16)> = eclaireur_pos
                         .iter()
                         .filter(|&&pos| pos != (robot.position.0, robot.position.1))
                         .copied()
                         .collect();
-                    
+
                     // Mettre à jour last_visited
                     {
                         let mut lv = last_visited_clone.lock().unwrap();
                         lv.insert((robot.position.0, robot.position.1), robot_id);
                     }
-                    
+
                     // Appeler move_robot avec les locks
                     {
                         let mut map = map_clone.lock().unwrap();
                         let lv = last_visited_clone.lock().unwrap();
                         let mut pending = pending_clone.lock().unwrap();
-                        
+
                         robot::move_robot(
                             &mut robot,
                             &mut *map,
@@ -128,21 +128,21 @@ impl GameState {
                             &other_positions,
                             &lv,
                             robot_id,
-                            &mut *pending
+                            &mut *pending,
                         );
                     }
-                    
+
                     robot
                 })
             })
             .collect();
-        
+
         // Attendre que tous les threads se terminent
         let mut eclaireurs: Vec<_> = handles
             .into_iter()
             .map(|h| h.join().expect("Thread éclaireur a paniqué"))
             .collect();
-        
+
         // Récupérer les données partagées
         self.map = Arc::try_unwrap(map_shared)
             .expect("Arc still has references")
@@ -156,17 +156,17 @@ impl GameState {
             .expect("Arc still has references")
             .into_inner()
             .unwrap();
-        
+
         // Mettre à jour map_discovered avec les découvertes de chaque éclaireur
         for robot in &eclaireurs {
             self.map_discovered
                 .extend(robot.map_discovered.iter().map(|(x, y)| (*x, y.clone())));
         }
-        
+
         // Remettre les robots dans la liste
         self.robots.append(&mut eclaireurs);
         self.robots.append(&mut collecteurs);
-        
+
         // ⭐ COLLECTEURS (séquentiel, pas besoin de paralléliser)
         let mut reserved_positions: HashSet<(u16, u16)> = self
             .robots

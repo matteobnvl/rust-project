@@ -238,14 +238,14 @@ pub fn go_to_nearest_point(robot: &mut Robot, target: RobotPosition) {
 }
 
 pub fn move_robot(
-    robot: &mut Robot, 
-    map: &mut [Vec<Tile>], 
-    width: u16, 
+    robot: &mut Robot,
+    map: &mut [Vec<Tile>],
+    width: u16,
     height: u16,
     other_eclaireurs_positions: &HashSet<(u16, u16)>,
     last_visited: &HashMap<(u16, u16), usize>,
     current_robot_id: usize,
-    pending_resources: &mut HashSet<(u16, u16)> 
+    pending_resources: &mut HashSet<(u16, u16)>,
 ) {
     let current_position = robot.position;
     let center_map = RobotPosition(width / 2, height / 2);
@@ -262,13 +262,11 @@ pub fn move_robot(
 
     let around_robot = robot_vision(robot, map, width, height);
 
-    if around_robot
-        .iter()
-        .any(|(&pos, tile)| 
-            matches!(tile, Tile::Cristal(_) | Tile::Source(_))
-            && !pending_resources.contains(&pos)  // ← Vérifier aussi pending_resources !
-        )
-        && !robot.found_resources
+    if around_robot.iter().any(
+        |(&pos, tile)| {
+            matches!(tile, Tile::Cristal(_) | Tile::Source(_)) && !pending_resources.contains(&pos)
+        }, // ← Vérifier aussi pending_resources !
+    ) && !robot.found_resources
     {
         robot.found_resources = true;
     }
@@ -297,8 +295,12 @@ pub fn move_robot(
         robot.found_resources = false;
         let ressource_found = robot.target_resource.clone();
         if let Some(ressource_found) = ressource_found {
-            map[ressource_found.1 as usize][ressource_found.0 as usize] = robot.carried_resource.clone().unwrap();
-            robot.map_discovered.insert((ressource_found.0, ressource_found.1), robot.carried_resource.clone().unwrap());
+            map[ressource_found.1 as usize][ressource_found.0 as usize] =
+                robot.carried_resource.clone().unwrap();
+            robot.map_discovered.insert(
+                (ressource_found.0, ressource_found.1),
+                robot.carried_resource.clone().unwrap(),
+            );
             pending_resources.remove(&(ressource_found.0, ressource_found.1));
         }
     }
@@ -336,7 +338,8 @@ pub fn move_robot(
         },
         |p| {
             // ❌ ÉVITER : Ne pas viser une case récemment visitée par un autre robot
-            let visited_by_other = last_visited.get(&(p.0, p.1))
+            let visited_by_other = last_visited
+                .get(&(p.0, p.1))
                 .map_or(false, |&visitor_id| visitor_id != current_robot_id);
 
             let is_preferred_direction = if let Some((dx, dy)) = robot.direction {
@@ -352,15 +355,15 @@ pub fn move_robot(
             };
 
             // ✅ La case doit être non explorée ET pas visitée par un autre robot
-            is_preferred_direction 
-            && !visited_by_other 
-            && !matches!(
-                robot.map_discovered.get(&(p.0, p.1)),
-                Some(Tile::Explored)
-                    | Some(Tile::SourceFound(_))
-                    | Some(Tile::CristalFound(_))
-                    | Some(Tile::Base)
-            )
+            is_preferred_direction
+                && !visited_by_other
+                && !matches!(
+                    robot.map_discovered.get(&(p.0, p.1)),
+                    Some(Tile::Explored)
+                        | Some(Tile::SourceFound(_))
+                        | Some(Tile::CristalFound(_))
+                        | Some(Tile::Base)
+                )
         },
     );
 
