@@ -17,6 +17,7 @@ pub struct Robot {
     pub collected_resources: u32,
     pub target_resource: Option<RobotPosition>,
     pub carried_resource: Option<Tile>,
+    pub direction: Option<(i16, i16)>,
 }
 
 #[derive(PartialEq)]
@@ -47,7 +48,7 @@ impl RobotPosition {
     }
 }
 
-pub fn robots_eclaireur(width: u16, height: u16) -> Robot {
+pub fn robots_eclaireur(width: u16, height: u16, direction: (i16, i16)) -> Robot {
     let center_map: RobotPosition = RobotPosition(width / 2, height / 2);
     Robot {
         position: center_map,
@@ -58,6 +59,7 @@ pub fn robots_eclaireur(width: u16, height: u16) -> Robot {
         collected_resources: 0,
         target_resource: None,
         carried_resource: None,
+        direction: Some(direction),
     }
 }
 
@@ -72,6 +74,7 @@ pub fn robots_collecteur(width: u16, height: u16) -> Robot {
         collected_resources: 0,
         target_resource: None,
         carried_resource: None,
+        direction: None,
     }
 }
 
@@ -253,14 +256,16 @@ pub fn move_robot(robot: &mut Robot, map: &mut [Vec<Tile>], width: u16, height: 
     for (&(x, y), tile) in &around_robot {
         match tile {
             Tile::Source(qty) => {
-                map[y as usize][x as usize] = Tile::SourceFound(*qty);
-                robot.map_discovered.insert((x, y), Tile::SourceFound(*qty));
+                // map[y as usize][x as usize] = Tile::SourceFound(*qty);
+                // robot.map_discovered.insert((x, y), Tile::SourceFound(*qty));
+                let target_resource = Tile::SourceFound(*qty);
+                robot.carried_resource = Some(target_resource);
+                robot.target_resource = Some(RobotPosition(x, y));
             }
             Tile::Cristal(qty) => {
-                map[y as usize][x as usize] = Tile::CristalFound(*qty);
-                robot
-                    .map_discovered
-                    .insert((x, y), Tile::CristalFound(*qty));
+                let target_resource = Tile::CristalFound(*qty);
+                robot.carried_resource = Some(target_resource);
+                robot.target_resource = Some(RobotPosition(x, y));
             }
             _ => {}
         }
@@ -268,6 +273,11 @@ pub fn move_robot(robot: &mut Robot, map: &mut [Vec<Tile>], width: u16, height: 
 
     if robot.found_resources && current_position == center_map {
         robot.found_resources = false;
+        let ressource_found = robot.target_resource.clone();
+        if let Some(ressource_found) = ressource_found {
+            map[ressource_found.1 as usize][ressource_found.0 as usize] = robot.carried_resource.clone().unwrap();
+            robot.map_discovered.insert((ressource_found.0, ressource_found.1), robot.carried_resource.clone().unwrap());
+        }
     }
 
     if around_robot
@@ -305,7 +315,18 @@ pub fn move_robot(robot: &mut Robot, map: &mut [Vec<Tile>], width: u16, height: 
                 .collect::<Vec<_>>()
         },
         |p| {
-            !matches!(
+            let is_preferred_direction = if let Some((dx, dy)) = robot.direction {
+                if robot.map_discovered.len() < 20 {  // Les 20 premiers mouvements
+                    let diff_x = p.0 as i16 - current_position.0 as i16;
+                    let diff_y = p.1 as i16 - current_position.1 as i16;
+                    (diff_x * dx + diff_y * dy) > 0  // Vérifier si on va dans la bonne direction
+                } else {
+                    true  // Après, peu importe
+                }
+            } else {
+                true
+            };
+            is_preferred_direction && !matches!(
                 robot.map_discovered.get(&(p.0, p.1)),
                 Some(Tile::Explored)
                     | Some(Tile::SourceFound(_))

@@ -65,14 +65,10 @@ impl GameState {
             }
         }
 
-        // let resources_left = self.map_discovered
-        //     .values()
-        //     .filter(|t| matches!(t, map::Tile::SourceFound(qty) | map::Tile::CristalFound(qty) if *qty > 0))
-        //     .count();
-
         let mut reserved_positions: std::collections::HashSet<(u16, u16)> = self
             .robots
             .iter()
+            .filter(|r| r.robot_type == robot::RobotType::Collecteur)  // ← Seulement les collecteurs !
             .filter_map(|r| r.target_resource)
             .map(|pos| (pos.0, pos.1))
             .collect();
@@ -95,7 +91,6 @@ impl GameState {
                             _ => {}
                         }
                     }
-
                     if let Some(new_target) = robot::find_nearest_resource(
                         robot,
                         &self.map_discovered,
@@ -194,8 +189,8 @@ async fn main() -> Result<()> {
         }
     });
 
-    let robot1 = robot::robots_eclaireur(area.width, area.height);
-    let robot2 = robot::robots_eclaireur(area.width, area.height);
+    let robot1 = robot::robots_eclaireur(area.width, area.height, (1, 0));
+    let robot2 = robot::robots_eclaireur(area.width, area.height, (0, 1));
 
     let robot3 = robot::robots_collecteur(area.width, area.height);
     let robot4 = robot::robots_collecteur(area.width, area.height);
