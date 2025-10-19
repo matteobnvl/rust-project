@@ -1,9 +1,4 @@
-use std::collections::HashMap;
-use std::collections::HashSet;
 use std::fmt::Display;
-use std::sync::{Arc, Mutex};
-use std::thread;
-
 use rand::{SeedableRng, rngs::StdRng};
 use ratatui::{
     DefaultTerminal, Frame,
@@ -16,230 +11,14 @@ use ratatui::{
 };
 use std::time::{Duration, Instant};
 use tokio::sync::{broadcast, mpsc};
+use crate::game_state::GameState;
 
 mod base;
 mod map;
 mod robot;
 mod utils;
+mod game_state;
 
-pub struct GameState {
-    map: Vec<Vec<map::Tile>>,
-    width: u16,
-    height: u16,
-    robots: Vec<robot::Robot>,
-    map_discovered: HashMap<(u16, u16), map::Tile>,
-    _base: base::SharedBase,
-    pub energy: u32,
-    pub crystals: u32,
-    pub rx_broadcast: tokio::sync::broadcast::Receiver<base::BroadcastMessage>,
-    pub tx_base: mpsc::Sender<base::BaseMessage>,
-    pub last_visited: HashMap<(u16, u16), usize>,
-    pub pending_resources: HashSet<(u16, u16)>,
-}
-
-impl GameState {
-    pub fn new(
-        map: Vec<Vec<map::Tile>>,
-        width: u16,
-        height: u16,
-        robots: Vec<robot::Robot>,
-        base: base::SharedBase,
-        rx_broadcast: tokio::sync::broadcast::Receiver<base::BroadcastMessage>,
-        tx_base: mpsc::Sender<base::BaseMessage>,
-    ) -> Self {
-        Self {
-            map,
-            width,
-            height,
-            robots,
-            map_discovered: HashMap::new(),
-            _base: base,
-            energy: 0,
-            crystals: 0,
-            rx_broadcast,
-            tx_base,
-            last_visited: HashMap::new(),
-            pending_resources: HashSet::new(),
-        }
-    }
-
-    pub fn update(&mut self) {
-        // Collecter les positions des éclaireurs
-        let eclaireur_positions: HashSet<(u16, u16)> = self
-            .robots
-            .iter()
-            .filter(|r| r.robot_type == robot::RobotType::Eclaireur)
-            .map(|r| (r.position.0, r.position.1))
-            .collect();
-
-        // Données partagées entre threads (avec Arc + Mutex)
-        let map_shared = Arc::new(Mutex::new(self.map.clone()));
-        let last_visited_shared = Arc::new(Mutex::new(self.last_visited.clone()));
-        let pending_shared = Arc::new(Mutex::new(self.pending_resources.clone()));
-
-        // Séparer éclaireurs et collecteurs
-        let mut eclaireurs = Vec::new();
-        let mut collecteurs = Vec::new();
-
-        for robot in self.robots.drain(..) {
-            if robot.robot_type == robot::RobotType::Eclaireur {
-                eclaireurs.push(robot);
-            } else {
-                collecteurs.push(robot);
-            }
-        }
-
-        // ⭐ LANCER LES ÉCLAIREURS EN PARALLÈLE
-        let handles: Vec<_> = eclaireurs
-            .into_iter()
-            .enumerate()
-            .map(|(robot_id, mut robot)| {
-                let map_clone = Arc::clone(&map_shared);
-                let last_visited_clone = Arc::clone(&last_visited_shared);
-                let pending_clone = Arc::clone(&pending_shared);
-                let eclaireur_pos = eclaireur_positions.clone();
-                let width = self.width;
-                let height = self.height;
-
-                thread::spawn(move || {
-                    let other_positions: HashSet<(u16, u16)> = eclaireur_pos
-                        .iter()
-                        .filter(|&&pos| pos != (robot.position.0, robot.position.1))
-                        .copied()
-                        .collect();
-
-                    // Mettre à jour last_visited
-                    {
-                        let mut lv = last_visited_clone.lock().unwrap();
-                        lv.insert((robot.position.0, robot.position.1), robot_id);
-                    }
-
-                    // Appeler move_robot avec les locks
-                    {
-                        let mut map = map_clone.lock().unwrap();
-                        let lv = last_visited_clone.lock().unwrap();
-                        let mut pending = pending_clone.lock().unwrap();
-
-                        robot::move_robot(
-                            &mut robot,
-                            &mut *map,
-                            width,
-                            height - 1,
-                            &other_positions,
-                            &lv,
-                            robot_id,
-                            &mut *pending,
-                        );
-                    }
-
-                    robot
-                })
-            })
-            .collect();
-
-        // Attendre que tous les threads se terminent
-        let mut eclaireurs: Vec<_> = handles
-            .into_iter()
-            .map(|h| h.join().expect("Thread éclaireur a paniqué"))
-            .collect();
-
-        // Récupérer les données partagées
-        self.map = Arc::try_unwrap(map_shared)
-            .expect("Arc still has references")
-            .into_inner()
-            .unwrap();
-        self.last_visited = Arc::try_unwrap(last_visited_shared)
-            .expect("Arc still has references")
-            .into_inner()
-            .unwrap();
-        self.pending_resources = Arc::try_unwrap(pending_shared)
-            .expect("Arc still has references")
-            .into_inner()
-            .unwrap();
-
-        // Mettre à jour map_discovered avec les découvertes de chaque éclaireur
-        for robot in &eclaireurs {
-            self.map_discovered
-                .extend(robot.map_discovered.iter().map(|(x, y)| (*x, y.clone())));
-        }
-
-        // Remettre les robots dans la liste
-        self.robots.append(&mut eclaireurs);
-        self.robots.append(&mut collecteurs);
-
-        // ⭐ COLLECTEURS (séquentiel, pas besoin de paralléliser)
-        let mut reserved_positions: HashSet<(u16, u16)> = self
-            .robots
-            .iter()
-            .filter(|r| r.robot_type == robot::RobotType::Collecteur)
-            .filter_map(|r| r.target_resource)
-            .map(|pos| (pos.0, pos.1))
-            .collect();
-
-        for robot in &mut self.robots {
-            robot::get_discovered_map(robot, &self.map_discovered);
-
-            if robot.robot_type == robot::RobotType::Collecteur {
-                if robot.target_resource.is_none() {
-                    for ((x, y), _tile) in self.map_discovered.clone() {
-                        match self.map[y as usize][x as usize] {
-                            map::Tile::Explored => {
-                                self.map_discovered.insert((x, y), map::Tile::Explored);
-                            }
-                            map::Tile::SourceFound(qty) | map::Tile::CristalFound(qty)
-                                if qty == 0 =>
-                            {
-                                self.map_discovered.insert((x, y), map::Tile::Explored);
-                            }
-                            _ => {}
-                        }
-                    }
-                    if let Some(new_target) = robot::find_nearest_resource(
-                        robot,
-                        &self.map_discovered,
-                        &reserved_positions,
-                    ) {
-                        robot.target_resource = Some(new_target);
-                        reserved_positions.insert((new_target.0, new_target.1));
-                    }
-                }
-
-                if let Some(_target) = robot.target_resource {
-                    let tx_base = self.tx_base.clone();
-                    let before = robot.target_resource;
-                    robot::collect_resources(
-                        robot,
-                        &mut self.map,
-                        self.width,
-                        self.height,
-                        &tx_base,
-                        &reserved_positions,
-                    );
-
-                    if let Some(target) = before
-                        && matches!(
-                            self.map[target.1 as usize][target.0 as usize],
-                            map::Tile::Explored
-                        )
-                    {
-                        self.map_discovered
-                            .insert((target.0, target.1), map::Tile::Explored);
-                    }
-                }
-            }
-        }
-
-        // Redessiner la base
-        let base_center = (self.width / 2, self.height / 2);
-        for dy in -1..=1 {
-            for dx in -1..=1 {
-                let bx = (base_center.0 as i16 + dx) as usize;
-                let by = (base_center.1 as i16 + dy) as usize;
-                self.map[by][bx] = map::Tile::Base;
-            }
-        }
-    }
-}
 #[derive(Debug, thiserror::Error)]
 pub enum SimulationError {
     Io(#[from] std::io::Error),
@@ -257,46 +36,49 @@ pub type Result<T> = std::result::Result<T, SimulationError>;
 async fn main() -> Result<()> {
     let _guard = utils::configure_logger();
     tracing::info!("Application started!");
-    const REPEATED_SEED: [u8; 32] = [0; 32];
-    let mut _rng = StdRng::from_seed(REPEATED_SEED);
 
+    // rng et channels setup
+    const REPEATED_SEED: [u8; 32] = [0; 32];
+    let _rng = StdRng::from_seed(REPEATED_SEED);
     let (tx_base, rx_base) = mpsc::channel::<base::BaseMessage>(1024);
     let (tx_broadcast, rx_broadcast) = broadcast::channel::<base::BroadcastMessage>(1024);
+
+    // base setup
     let base = base::Base::new(tx_broadcast.clone());
+    let base_clone = base.clone();
+    tokio::spawn(async move {
+        base_clone.run(rx_base).await;
+    });
 
-    {
-        let base_clone = base.clone();
-        tokio::spawn(async move {
-            base_clone.run(rx_base).await;
-        });
-    }
-
+    // terminal setup
     let terminal = ratatui::init();
     let area: Size = terminal.size().map_err(SimulationError::Io)?;
 
-    let sources = map::generate_sources_rand(area.width, area.height - 1)?;
+    // map generation
     let mut map = map::generate_map(area.width, area.height - 1)?;
-    let start_x = (area.width / 2) - 1;
-    let start_y = (area.height / 2) - 1;
-
-    for y in start_y..start_y + 3 {
-        for x in start_x..start_x + 3 {
-            map[y as usize][x as usize] = map::Tile::Base;
-        }
-    }
-
+    let sources = map::generate_sources_rand(area.width, area.height - 1)?;
     sources.iter().for_each(|(x, y, resource)| {
         if let map::Tile::Floor = map[*y as usize][*x as usize] {
             map[*y as usize][*x as usize] = resource.clone();
         }
     });
 
+    // base center generation
+    let start_x = (area.width / 2) - 1;
+    let start_y = (area.height / 2) - 1;
+    for y in start_y..start_y + 3 {
+        for x in start_x..start_x + 3 {
+            map[y as usize][x as usize] = map::Tile::Base;
+        }
+    }
+
+    // robots generation -- A REFACTO
     let robot1 = robot::robots_eclaireur(area.width, area.height, (1, 0));
     let robot2 = robot::robots_eclaireur(area.width, area.height, (0, 1));
-
     let robot3 = robot::robots_collecteur(area.width, area.height);
     let robot4 = robot::robots_collecteur(area.width, area.height);
 
+    // game configuration -- A REFACTO
     tracing::info!("Map generated");
     let mut game_state = GameState::new(
         map,
@@ -328,14 +110,11 @@ fn run(mut terminal: DefaultTerminal, game_state: &mut GameState, area: Size) ->
         }
 
         while let Ok(msg) = game_state.rx_broadcast.try_recv() {
-            if let base::BroadcastMessage::BaseStats { energy, crystals } = msg {
-                game_state.energy = energy;
-                game_state.crystals = crystals;
-                tracing::info!(
-                    "🏆 Score mis à jour : énergie = {}, cristaux = {}",
-                    energy,
-                    crystals
-                );
+            match msg {
+                base::BroadcastMessage::BaseStats { energy, crystals } => {
+                    game_state.energy = energy;
+                    game_state.crystals = crystals;
+                }
             }
         }
 

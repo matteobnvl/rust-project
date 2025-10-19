@@ -10,7 +10,6 @@ use tokio::sync::mpsc::Sender;
 
 pub struct Robot {
     pub position: RobotPosition,
-    pub energy: u32,
     pub robot_type: RobotType,
     pub map_discovered: HashMap<(u16, u16), Tile>,
     pub found_resources: bool,
@@ -52,7 +51,6 @@ pub fn robots_eclaireur(width: u16, height: u16, direction: (i16, i16)) -> Robot
     let center_map: RobotPosition = RobotPosition(width / 2, height / 2);
     Robot {
         position: center_map,
-        energy: 100,
         robot_type: RobotType::Eclaireur,
         map_discovered: HashMap::new(),
         found_resources: false,
@@ -67,7 +65,6 @@ pub fn robots_collecteur(width: u16, height: u16) -> Robot {
     let center_map: RobotPosition = RobotPosition(width / 2, height / 2);
     Robot {
         position: center_map,
-        energy: 100,
         robot_type: RobotType::Collecteur,
         map_discovered: HashMap::new(),
         found_resources: false,
@@ -195,7 +192,7 @@ pub fn collect_resources(
             }
         }
         _ => {
-            tracing::warn!("⚠️ Ressource non disponible");
+            tracing::warn!("Ressource non disponible");
             robot.target_resource = None;
         }
     }
@@ -233,10 +230,11 @@ pub fn go_to_nearest_point(robot: &mut Robot, target: RobotPosition) {
             robot.position = path[1];
         }
     } else {
-        tracing::warn!("⚠️ Aucun chemin trouvé vers {:?}", target);
+        tracing::warn!("Aucun chemin trouvé vers {:?}", target);
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn move_robot(
     robot: &mut Robot,
     map: &mut [Vec<Tile>],
@@ -293,7 +291,7 @@ pub fn move_robot(
 
     if robot.found_resources && current_position == center_map {
         robot.found_resources = false;
-        let ressource_found = robot.target_resource.clone();
+        let ressource_found = robot.target_resource;
         if let Some(ressource_found) = ressource_found {
             map[ressource_found.1 as usize][ressource_found.0 as usize] =
                 robot.carried_resource.clone().unwrap();
@@ -316,7 +314,7 @@ pub fn move_robot(
             pos.successors()
                 .into_iter()
                 .filter(|(p, _)| {
-                    // ❌ BLOQUER : Ne pas aller sur une case occupée par un autre éclaireur
+                    // BLOQUER : Ne pas aller sur une case occupée par un autre éclaireur
                     if other_eclaireurs_positions.contains(&(p.0, p.1)) {
                         return false;
                     }
@@ -337,10 +335,10 @@ pub fn move_robot(
                 .collect::<Vec<_>>()
         },
         |p| {
-            // ❌ ÉVITER : Ne pas viser une case récemment visitée par un autre robot
+            // ÉVITER : Ne pas viser une case récemment visitée par un autre robot
             let visited_by_other = last_visited
                 .get(&(p.0, p.1))
-                .map_or(false, |&visitor_id| visitor_id != current_robot_id);
+                .is_some_and(|&visitor_id| visitor_id != current_robot_id);
 
             let is_preferred_direction = if let Some((dx, dy)) = robot.direction {
                 if robot.map_discovered.len() < 20 {
@@ -354,7 +352,7 @@ pub fn move_robot(
                 true
             };
 
-            // ✅ La case doit être non explorée ET pas visitée par un autre robot
+            // La case doit être non explorée ET pas visitée par un autre robot
             is_preferred_direction
                 && !visited_by_other
                 && !matches!(
