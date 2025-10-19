@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use crate::game_state::GameState;
 use rand::{SeedableRng, rngs::StdRng};
 use ratatui::{
     DefaultTerminal, Frame,
@@ -9,15 +9,15 @@ use ratatui::{
     text::{Line, Span},
     widgets::Paragraph,
 };
+use std::fmt::Display;
 use std::time::{Duration, Instant};
 use tokio::sync::{broadcast, mpsc};
-use crate::game_state::GameState;
 
 mod base;
+mod game_state;
 mod map;
 mod robot;
 mod utils;
-mod game_state;
 
 #[derive(Debug, thiserror::Error)]
 pub enum SimulationError {

@@ -1,8 +1,8 @@
+use crate::{base, map, robot};
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use tokio::sync::mpsc;
-use crate::{base, map, robot};
 
 pub struct GameState {
     pub(crate) map: Vec<Vec<map::Tile>>,
@@ -169,10 +169,10 @@ impl GameState {
                                 self.map_discovered.insert((x, y), map::Tile::Explored);
                             }
                             map::Tile::SourceFound(qty) | map::Tile::CristalFound(qty)
-                            if qty == 0 =>
-                                {
-                                    self.map_discovered.insert((x, y), map::Tile::Explored);
-                                }
+                                if qty == 0 =>
+                            {
+                                self.map_discovered.insert((x, y), map::Tile::Explored);
+                            }
                             _ => {}
                         }
                     }
